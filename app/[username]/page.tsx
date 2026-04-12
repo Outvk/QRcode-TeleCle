@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { QrCode } from 'lucide-react'
 import { CopyProfileButton } from '@/components/CopyProfileButton'
+import Footer from '@/components/Footer'
 
 export const dynamic = 'force-dynamic'
 
@@ -118,11 +119,13 @@ export default async function ProfilePage({ params }: { params: { username: stri
               <div className="flex flex-col items-center gap-2 w-full">
                 <p className="text-xs text-muted-foreground font-mono truncate max-w-full px-4">{profileUrl} </p>
                 <CopyProfileButton url={profileUrl} />
+                
               </div>
             </div>
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }
