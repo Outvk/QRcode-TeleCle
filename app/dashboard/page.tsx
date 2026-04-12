@@ -69,7 +69,7 @@ export default function DashboardPage() {
   const [copied, setCopied] = useState(false)
   const qrRef = useRef<HTMLDivElement>(null)
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://qrcode-telecle.vercel.app'
 
   async function loadProfiles(selectId?: string) {
     const { data: { user } } = await supabase.auth.getUser()
