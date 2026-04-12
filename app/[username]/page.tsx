@@ -31,7 +31,7 @@ export default async function ProfilePage({ params }: { params: { username: stri
 
   if (!profile) notFound()
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://qrcode-telecle.vercel.app'
   const profileUrl = `${siteUrl}/${profile.username}`
   const activeLinks = SOCIAL_PLATFORMS.filter(p => profile.links?.[p.key])
 
@@ -116,7 +116,7 @@ export default async function ProfilePage({ params }: { params: { username: stri
               </div>
               
               <div className="flex flex-col items-center gap-2 w-full">
-                <p className="text-xs text-muted-foreground font-mono truncate max-w-full px-4">{profileUrl}</p>
+                <p className="text-xs text-muted-foreground font-mono truncate max-w-full px-4">{profileUrl} </p>
                 <CopyProfileButton url={profileUrl} />
               </div>
             </div>
