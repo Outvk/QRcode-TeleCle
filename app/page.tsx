@@ -9,7 +9,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b">
+      <nav className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 border-b backdrop-blur-xl bg-white/10 dark:bg-black/10 border-white/20 dark:border-white/10">
         <div className="flex items-center gap-2">
           <QrCode className="h-5 w-5" />
           <span className="font-semibold text-sm tracking-tight">QRLinks</span>

@@ -1,0 +1,364 @@
+
+<style>
+  h2.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  .wrap{padding:1rem 0;display:flex;flex-direction:column;gap:1.5rem}
+  .controls{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .ctrl{display:flex;flex-direction:column;gap:6px}
+  label{font-size:13px;color:var(--color-text-secondary)}
+  select,input[type=text]{width:100%;box-sizing:border-box}
+  input[type=color]{width:44px;height:36px;padding:2px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);cursor:pointer}
+  .color-row{display:flex;align-items:center;gap:8px}
+  .preview{display:flex;justify-content:center;padding:1.5rem;background:var(--color-background-secondary);border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-tertiary)}
+  #qr-canvas{border-radius:8px}
+  .code-block{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:1rem;font-family:var(--font-mono);font-size:12px;line-height:1.6;overflow-x:auto;color:var(--color-text-secondary);white-space:pre}
+  button.copy-btn{font-size:12px;padding:4px 10px;cursor:pointer;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary)}
+  .code-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .code-label{font-size:12px;font-weight:500;color:var(--color-text-secondary)}
+</style>
+
+<div class="wrap">
+  <h2 class="sr-only">Interactive QR code pattern generator with customizable shapes, colors, and styles</h2>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>Text / URL</label>
+      <input type="text" id="qr-text" value="https://claude.ai" />
+    </div>
+    <div class="ctrl">
+      <label>Dot shape</label>
+      <select id="dot-shape">
+        <option value="square">Square (classic)</option>
+        <option value="round" selected>Round dots</option>
+        <option value="diamond">Diamond</option>
+        <option value="star">Star burst</option>
+        <option value="cross">Cross / plus</option>
+        <option value="vertical">Vertical bars</option>
+        <option value="horizontal">Horizontal bars</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Finder style</label>
+      <select id="finder-shape">
+        <option value="square">Square</option>
+        <option value="round" selected>Rounded</option>
+        <option value="dot">Dot inside</option>
+        <option value="leaf">Leaf corners</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Error correction</label>
+      <select id="ec-level">
+        <option value="L">L — 7%</option>
+        <option value="M" selected>M — 15%</option>
+        <option value="Q">Q — 25%</option>
+        <option value="H">H — 30%</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Dot color</label>
+      <div class="color-row">
+        <input type="color" id="dot-color" value="#1a1a2e" />
+        <span id="dot-color-val" style="font-size:12px;color:var(--color-text-secondary)">#1a1a2e</span>
+      </div>
+    </div>
+    <div class="ctrl">
+      <label>Background color</label>
+      <div class="color-row">
+        <input type="color" id="bg-color" value="#ffffff" />
+        <span id="bg-color-val" style="font-size:12px;color:var(--color-text-secondary)">#ffffff</span>
+      </div>
+    </div>
+    <div class="ctrl">
+      <label>Accent color (finder)</label>
+      <div class="color-row">
+        <input type="color" id="accent-color" value="#5344b7" />
+        <span id="accent-color-val" style="font-size:12px;color:var(--color-text-secondary)">#5344b7</span>
+      </div>
+    </div>
+    <div class="ctrl">
+      <label>Size (px)</label>
+      <input type="range" min="150" max="400" value="260" id="qr-size" step="10" />
+    </div>
+  </div>
+
+  <div class="preview">
+    <canvas id="qr-canvas" width="260" height="260"></canvas>
+  </div>
+
+  <div>
+    <div class="code-header">
+      <span class="code-label">Python — generate this pattern</span>
+      <button class="copy-btn" onclick="copyCode()">Copy</button>
+    </div>
+    <div class="code-block" id="code-out"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+function hexToRgb(hex){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return {r,g,b};
+}
+
+function generateQRMatrix(text, ecLevel){
+  return new Promise(resolve=>{
+    const div=document.createElement('div');
+    div.style.visibility='hidden';
+    document.body.appendChild(div);
+    try{
+      new QRCode(div,{text,width:1,height:1,correctLevel:QRCode.CorrectLevel[ecLevel]});
+      setTimeout(()=>{
+        const img=div.querySelector('img');
+        if(!img){document.body.removeChild(div);resolve(null);return;}
+        const tmpC=document.createElement('canvas');
+        const size=200;
+        tmpC.width=size;tmpC.height=size;
+        const ctx2=tmpC.getContext('2d');
+        img.onload=()=>{
+          ctx2.drawImage(img,0,0,size,size);
+          const d=ctx2.getImageData(0,0,size,size);
+          document.body.removeChild(div);
+          resolve({data:d,size});
+        };
+        if(img.complete)img.onload();
+      },100);
+    }catch(e){document.body.removeChild(div);resolve(null);}
+  });
+}
+
+function sampleMatrix(imgData, imgSize, modules){
+  const mat=[];
+  for(let r=0;r<modules;r++){
+    mat.push([]);
+    for(let c=0;c<modules;c++){
+      const px=Math.floor((c/modules)*imgSize);
+      const py=Math.floor((r/modules)*imgSize);
+      const idx=(py*imgSize+px)*4;
+      mat[r].push(imgData.data[idx]<128?1:0);
+    }
+  }
+  return mat;
+}
+
+function isFinder(r,c,modules){
+  const last=modules-7;
+  return (r<7&&c<7)||(r<7&&c>=last)||(r>=last&&c<7);
+}
+
+function isFinderRing(r,c,modules){
+  const last=modules-7;
+  if(r<7&&c<7) return r===0||r===6||c===0||c===6;
+  if(r<7&&c>=last) return r===0||r===6||c===last||c===last+6;
+  if(r>=last&&c<7) return r===last||r===last+6||c===0||c===6;
+  return false;
+}
+
+function isFinderInner(r,c,modules){
+  const last=modules-7;
+  if(r>=2&&r<=4&&c>=2&&c<=4) return true;
+  if(r>=2&&r<=4&&c>=last+2&&c<=last+4) return true;
+  if(r>=last+2&&r<=last+4&&c>=2&&c<=4) return true;
+  return false;
+}
+
+function drawDot(ctx,x,y,s,shape,color){
+  ctx.fillStyle=color;
+  const h=s*0.5,cx=x+h,cy=y+h;
+  switch(shape){
+    case 'square':
+      ctx.fillRect(x+1,y+1,s-2,s-2);
+      break;
+    case 'round':
+      ctx.beginPath();ctx.arc(cx,cy,h*0.82,0,Math.PI*2);ctx.fill();
+      break;
+    case 'diamond':
+      ctx.beginPath();ctx.moveTo(cx,y+1);ctx.lineTo(x+s-1,cy);
+      ctx.lineTo(cx,y+s-1);ctx.lineTo(x+1,cy);ctx.closePath();ctx.fill();
+      break;
+    case 'star':
+      ctx.beginPath();
+      for(let i=0;i<8;i++){
+        const a=i*Math.PI/4,r2=i%2===0?h*0.9:h*0.4;
+        i===0?ctx.moveTo(cx+r2*Math.cos(a),cy+r2*Math.sin(a)):ctx.lineTo(cx+r2*Math.cos(a),cy+r2*Math.sin(a));
+      }
+      ctx.closePath();ctx.fill();
+      break;
+    case 'cross':
+      const t=s*0.28;
+      ctx.fillRect(cx-t,y+2,t*2,s-4);
+      ctx.fillRect(x+2,cy-t,s-4,t*2);
+      break;
+    case 'vertical':
+      ctx.fillRect(cx-s*0.2,y+1,s*0.4,s-2);
+      break;
+    case 'horizontal':
+      ctx.fillRect(x+1,cy-s*0.2,s-2,s*0.4);
+      break;
+    default:
+      ctx.fillRect(x+1,y+1,s-2,s-2);
+  }
+}
+
+function drawFinder(ctx,x,y,moduleSize,style,dotColor,accentColor){
+  const s=moduleSize;
+  ctx.fillStyle=accentColor;
+  switch(style){
+    case 'square':
+      ctx.fillRect(x,y,7*s,7*s);
+      ctx.fillStyle='#fff';
+      ctx.fillRect(x+s,y+s,5*s,5*s);
+      ctx.fillStyle=accentColor;
+      ctx.fillRect(x+2*s,y+2*s,3*s,3*s);
+      break;
+    case 'round':
+      roundRect(ctx,x,y,7*s,7*s,s*1.5,accentColor);
+      roundRect(ctx,x+s,y+s,5*s,5*s,s,'#fff');
+      roundRect(ctx,x+2*s,y+2*s,3*s,3*s,s*0.8,accentColor);
+      break;
+    case 'dot':
+      roundRect(ctx,x,y,7*s,7*s,s*1.5,accentColor);
+      roundRect(ctx,x+s,y+s,5*s,5*s,s,'#fff');
+      ctx.beginPath();ctx.arc(x+3.5*s,y+3.5*s,1.5*s,0,Math.PI*2);
+      ctx.fillStyle=accentColor;ctx.fill();
+      break;
+    case 'leaf':
+      leafRect(ctx,x,y,7*s,accentColor);
+      leafRect(ctx,x+s,y+s,5*s,'#fff');
+      ctx.fillStyle=accentColor;
+      ctx.beginPath();ctx.arc(x+3.5*s,y+3.5*s,1.4*s,0,Math.PI*2);ctx.fill();
+      break;
+  }
+}
+
+function roundRect(ctx,x,y,w,h,r,color){
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();ctx.fill();
+}
+
+function leafRect(ctx,x,y,sz,color){
+  const r=sz*0.35;
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+sz-r,y);ctx.arcTo(x+sz,y,x+sz,y+r,r);
+  ctx.lineTo(x+sz,y+sz-r);ctx.arcTo(x+sz,y+sz,x+sz-r,y+sz,r);
+  ctx.lineTo(x+r,y+sz);ctx.arcTo(x,y+sz,x,y+sz-r,r*2.5);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r*2.5);
+  ctx.closePath();ctx.fill();
+}
+
+let debounce;
+async function render(){
+  clearTimeout(debounce);
+  debounce=setTimeout(async()=>{
+    const text=$('qr-text').value||'https://claude.ai';
+    const dotShape=$('dot-shape').value;
+    const finderShape=$('finder-shape').value;
+    const ecLevel=$('ec-level').value;
+    const dotColor=$('dot-color').value;
+    const bgColor=$('bg-color').value;
+    const accentColor=$('accent-color').value;
+    const size=parseInt($('qr-size').value);
+
+    const canvas=$('qr-canvas');
+    canvas.width=size;canvas.height=size;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle=bgColor;ctx.fillRect(0,0,size,size);
+
+    const result=await generateQRMatrix(text,ecLevel);
+    if(!result){ctx.fillStyle='#e00';ctx.font='14px sans-serif';ctx.fillText('Error generating QR',10,size/2);return;}
+
+    const modules=33;
+    const moduleSize=Math.floor(size/modules);
+    const offset=Math.floor((size-modules*moduleSize)/2);
+
+    const finderPositions=[{r:0,c:0},{r:0,c:modules-7},{r:modules-7,c:0}];
+    const mat=sampleMatrix(result.data,result.size,modules);
+
+    finderPositions.forEach(({r,c})=>{
+      drawFinder(ctx,offset+c*moduleSize,offset+r*moduleSize,moduleSize,finderShape,dotColor,accentColor);
+    });
+
+    for(let r=0;r<modules;r++){
+      for(let c=0;c<modules;c++){
+        if(isFinder(r,c,modules)) continue;
+        if(mat[r][c]===1){
+          drawDot(ctx,offset+c*moduleSize,offset+r*moduleSize,moduleSize,dotShape,dotColor);
+        }
+      }
+    }
+
+    updateCode(text,dotShape,finderShape,ecLevel,dotColor,bgColor,accentColor);
+  },300);
+}
+
+function updateCode(text,dotShape,finderShape,ecLevel,dotColor,bgColor,accentColor){
+  $('code-out').textContent=`import qrcode
+from qrcode.image.styledimage import StyledPilImage
+from qrcode.image.styles.moduledrawers import (
+    RoundedModuleDrawer, GappedSquareModuleDrawer,
+    CircleModuleDrawer, VerticalBarsDrawer,
+    HorizontalBarsDrawer, SquareModuleDrawer
+)
+from qrcode.image.styles.colormasks import SolidFillColorMask
+from PIL import Image
+
+# Map dot shape: "${dotShape}"
+drawer_map = {
+    "square":     SquareModuleDrawer(),
+    "round":      RoundedModuleDrawer(),
+    "diamond":    RoundedModuleDrawer(radius_ratio=0.5),
+    "vertical":   VerticalBarsDrawer(),
+    "horizontal": HorizontalBarsDrawer(),
+}
+drawer = drawer_map.get("${dotShape}", RoundedModuleDrawer())
+
+def hex_to_rgb(h):
+    h = h.lstrip('#')
+    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+qr = qrcode.QRCode(
+    error_correction=qrcode.constants.ERROR_CORRECT_${ecLevel},
+    box_size=10, border=4
+)
+qr.add_data("${text}")
+qr.make(fit=True)
+
+img = qr.make_image(
+    image_factory=StyledPilImage,
+    module_drawer=drawer,
+    color_mask=SolidFillColorMask(
+        front_color=hex_to_rgb("${dotColor}"),
+        back_color=hex_to_rgb("${bgColor}")
+    )
+)
+img.save("my_qr.png")
+print("QR saved!")`;
+}
+
+function copyCode(){
+  navigator.clipboard.writeText($('code-out').textContent);
+  const btn=document.querySelector('.copy-btn');
+  btn.textContent='Copied!';
+  setTimeout(()=>btn.textContent='Copy',1500);
+}
+
+['qr-text','dot-shape','finder-shape','ec-level','qr-size'].forEach(id=>{
+  $(id).addEventListener('input',render);
+});
+['dot-color','bg-color','accent-color'].forEach(id=>{
+  $(id).addEventListener('input',e=>{
+    $(id+'-val').textContent=e.target.value;
+    render();
+  });
+});
+
+render();
+</script>

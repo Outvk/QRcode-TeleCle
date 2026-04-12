@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
 import { SOCIAL_PLATFORMS } from '@/lib/utils'
-import { QRCodeSVG } from 'qrcode.react'
+import { CustomQRCode } from '@/components/CustomQRCode'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { QrCode } from 'lucide-react'
 import { CopyProfileButton } from '@/components/CopyProfileButton'
@@ -125,7 +125,18 @@ export default async function ProfilePage({ params }: { params: { username: stri
               <div className="flex flex-col items-center gap-3">
                 <p className="text-xs text-muted-foreground font-medium tracking-wide uppercase">Scan to share</p>
                 <div className="bg-white rounded-3xl p-6 shadow-inner border border-slate-100">
-                  <QRCodeSVG value={profileUrl} size={160} level="H" />
+                  <CustomQRCode 
+                    value={profileUrl} 
+                    size={160} 
+                    level="H"
+                    logoUrl={profile.qr_logo_url}
+                    logoSize={profile.qr_logo_size || 32}
+                    logoBorderRadius={profile.qr_logo_border_radius || 50}
+                    logoHasBg={profile.qr_logo_has_bg !== undefined ? profile.qr_logo_has_bg : false}
+                    fgColor={profile.qr_color || '#000000'}
+                    bgColor={profile.qr_bg_color || '#FFFFFF'}
+                    borderRadius={profile.qr_border_radius || 12}
+                  />
                 </div>
               </div>
               

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { QRCodeSVG } from 'qrcode.react'
+import { CustomQRCode } from '@/components/CustomQRCode'
 import { SOCIAL_PLATFORMS, cn } from '@/lib/utils'
 import {
   QrCode, LogOut, Save, Loader2, ExternalLink,
@@ -56,6 +56,14 @@ export default function DashboardPage() {
   const [username, setUsername] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [bannerUrl, setBannerUrl] = useState('')
+  const [qrLogoUrl, setQrLogoUrl] = useState('')
+  const [qrColor, setQrColor] = useState('#000000')
+  const [qrBgColor, setQrBgColor] = useState('#FFFFFF')
+  const [qrBorderRadius, setQrBorderRadius] = useState(12)
+  const [qrLogoSize, setQrLogoSize] = useState(44)
+  const [qrLogoBorderRadius, setQrLogoBorderRadius] = useState(50)
+  const [qrLogoHasBg, setQrLogoHasBg] = useState(false)
+  const [showQrCustomization, setShowQrCustomization] = useState(false)
   const [bio, setBio] = useState('')
   
   const [copied, setCopied] = useState(false)
@@ -95,6 +103,13 @@ export default function DashboardPage() {
     setBio(p.bio || '')
     setAvatarUrl(p.avatar_url || '')
     setBannerUrl(p.banner_url || '')
+    setQrLogoUrl(p.qr_logo_url || '')
+    setQrColor(p.qr_color || '#000000')
+    setQrBgColor(p.qr_bg_color || '#FFFFFF')
+    setQrBorderRadius(p.qr_border_radius || 12)
+    setQrLogoSize(p.qr_logo_size || 44)
+    setQrLogoBorderRadius(p.qr_logo_border_radius || 50)
+    setQrLogoHasBg(p.qr_logo_has_bg !== undefined ? p.qr_logo_has_bg : false)
     setLinks(p.links || {})
     
     // Auto-expand platforms that have values
@@ -113,6 +128,13 @@ export default function DashboardPage() {
         bio, 
         avatar_url: avatarUrl,
         banner_url: bannerUrl,
+        qr_logo_url: qrLogoUrl,
+        qr_color: qrColor,
+        qr_bg_color: qrBgColor,
+        qr_border_radius: qrBorderRadius,
+        qr_logo_size: qrLogoSize,
+        qr_logo_border_radius: qrLogoBorderRadius,
+        qr_logo_has_bg: qrLogoHasBg,
         links, 
         updated_at: new Date().toISOString() 
       })
@@ -365,6 +387,18 @@ export default function DashboardPage() {
                         placeholder="https://example.com/banner.jpg"
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="qrLogoUrl">QR Code Logo URL (Optional)</Label>
+                      <Input
+                        id="qrLogoUrl"
+                        value={qrLogoUrl}
+                        onChange={e => setQrLogoUrl(e.target.value)}
+                        placeholder="https://example.com/logo.png"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Add a logo to the center of your QR code. Recommended size: 200x200px PNG with transparent background.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -483,11 +517,17 @@ export default function DashboardPage() {
                 className="flex items-center justify-center rounded-3xl bg-white p-8 border shadow-inner overflow-hidden"
               >
                 {username ? (
-                  <QRCodeSVG
+                  <CustomQRCode
                     value={profileUrl}
                     size={220}
                     level="H"
-                    includeMargin={false}
+                    logoUrl={qrLogoUrl}
+                    logoSize={qrLogoSize}
+                    logoBorderRadius={qrLogoBorderRadius}
+                    logoHasBg={qrLogoHasBg}
+                    fgColor={qrColor}
+                    bgColor={qrBgColor}
+                    borderRadius={qrBorderRadius}
                   />
                 ) : (
                   <div className="w-[220px] h-[220px] flex items-center justify-center text-muted-foreground text-xs text-center px-4 font-medium italic">
@@ -496,7 +536,127 @@ export default function DashboardPage() {
                 )}
               </div>
 
+              {/* QR Customization Toggle */}
+              <div className="space-y-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowQrCustomization(!showQrCustomization)}
+                  className="w-full gap-2"
+                >
+                  <QrCode className="h-4 w-4" />
+                  {showQrCustomization ? 'Hide' : 'Show'} QR Customization
+                </Button>
 
+                {showQrCustomization && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="qrColor" className="text-xs">QR Code Color</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="qrColor"
+                            type="color"
+                            value={qrColor}
+                            onChange={(e) => setQrColor(e.target.value)}
+                            className="w-12 h-8 p-1 rounded"
+                          />
+                          <Input
+                            value={qrColor}
+                            onChange={(e) => setQrColor(e.target.value)}
+                            placeholder="#000000"
+                            className="flex-1 text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="qrBgColor" className="text-xs">Background Color</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="qrBgColor"
+                            type="color"
+                            value={qrBgColor}
+                            onChange={(e) => setQrBgColor(e.target.value)}
+                            className="w-12 h-8 p-1 rounded"
+                          />
+                          <Input
+                            value={qrBgColor}
+                            onChange={(e) => setQrBgColor(e.target.value)}
+                            placeholder="#FFFFFF"
+                            className="flex-1 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="qrBorderRadius" className="text-xs">QR Border Radius: {qrBorderRadius}px</Label>
+                        <Input
+                          id="qrBorderRadius"
+                          type="range"
+                          min="0"
+                          max="50"
+                          value={qrBorderRadius}
+                          onChange={(e) => setQrBorderRadius(Number(e.target.value))}
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="qrLogoSize" className="text-xs">Logo Size: {qrLogoSize}px</Label>
+                        <Input
+                          id="qrLogoSize"
+                          type="range"
+                          min="20"
+                          max="80"
+                          value={qrLogoSize}
+                          onChange={(e) => setQrLogoSize(Number(e.target.value))}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="qrLogoBorderRadius" className="text-xs">Logo Border Radius: {qrLogoBorderRadius}%</Label>
+                      <Input
+                        id="qrLogoBorderRadius"
+                        type="range"
+                        min="0"
+                        max="50"
+                        value={qrLogoBorderRadius}
+                        onChange={(e) => setQrLogoBorderRadius(Number(e.target.value))}
+                        className="w-full"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        0% = Square logo, 50% = Fully rounded logo
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="qrLogoHasBg" className="text-xs">Logo Background</Label>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-muted-foreground">
+                          {qrLogoHasBg ? 'With BG' : 'No BG'}
+                        </span>
+                        <button
+                          id="qrLogoHasBg"
+                          type="button"
+                          onClick={() => setQrLogoHasBg(!qrLogoHasBg)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            qrLogoHasBg ? 'bg-primary' : 'bg-muted'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              qrLogoHasBg ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Actions */}
               <div className="grid grid-cols-2 gap-2">
