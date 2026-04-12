@@ -14,4 +14,8 @@ export const SOCIAL_PLATFORMS = [
   { key: 'linkedin',  label: 'LinkedIn',  placeholder: 'https://linkedin.com/in/username',color: '#0A66C2' },
   { key: 'website',   label: 'Website',   placeholder: 'https://yoursite.com',           color: '#6366F1' },
   { key: 'whatsapp',  label: 'WhatsApp',  placeholder: 'https://wa.me/213XXXXXXXXX',     color: '#25D366' },
+  { key: 'pinterest', label: 'Pinterest', placeholder: 'https://pinterest.com/username',  color: '#E60023' },
+  { key: 'telegram',  label: 'Telegram',  placeholder: 'https://t.me/username',           color: '#0088CC' },
+  { key: 'gmail',     label: 'Gmail',     placeholder: 'mailto:email@example.com',        color: '#EA4335' },
+  { key: 'snapchat',  label: 'Snapchat',  placeholder: 'https://snapchat.com/add/username',color: '#FFFC00' },
 ]
