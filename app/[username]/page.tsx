@@ -4,6 +4,7 @@ import { SOCIAL_PLATFORMS } from '@/lib/utils'
 import { QRCodeSVG } from 'qrcode.react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { QrCode } from 'lucide-react'
+import { CopyProfileButton } from '@/components/CopyProfileButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,52 +46,81 @@ export default async function ProfilePage({ params }: { params: { username: stri
         <ThemeToggle />
       </div>
 
-      {/* Profile */}
-      <div className="flex-1 flex flex-col items-center justify-start px-4 py-10 max-w-md mx-auto w-full">
-
-        {/* Avatar placeholder */}
-        <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-2xl font-semibold mb-4 border">
-          {profile.display_name?.[0]?.toUpperCase() || profile.username[0].toUpperCase()}
-        </div>
-
-        <h1 className="text-xl font-semibold tracking-tight mb-1">
-          {profile.display_name || profile.username}
-        </h1>
-        <p className="text-sm text-muted-foreground mb-1">@{profile.username}</p>
-        {profile.bio && (
-          <p className="text-sm text-center text-muted-foreground max-w-xs mb-6">{profile.bio}</p>
-        )}
-
-        {/* Social links */}
-        {activeLinks.length > 0 ? (
-          <div className="w-full space-y-3 mb-8">
-            {activeLinks.map(platform => (
-              <a
-                key={platform.key}
-                href={profile.links[platform.key]}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 w-full rounded-xl border bg-card px-4 py-3.5 text-sm font-medium hover:bg-accent transition-colors group"
-              >
-                <span style={{ color: platform.color }}>{ICONS[platform.key]}</span>
-                <span className="flex-1">{platform.label}</span>
-                <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M7 17L17 7M7 7h10v10"/>
-                </svg>
-              </a>
-            ))}
+      {/* Profile Card Container */}
+      <div className="flex-1 flex flex-col items-center justify-start px-4 pt-12 pb-20 max-w-lg mx-auto w-full">
+        
+        <div className="w-full bg-card border rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col items-center pb-10 relative">
+          
+          {/* Banner */}
+          <div className="w-full h-48 bg-primary/5 border-b overflow-hidden relative">
+            {profile.banner_url ? (
+              <img src={profile.banner_url} alt="Banner" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-primary/10 to-primary/5" />
+            )}
           </div>
-        ) : (
-          <p className="text-muted-foreground text-sm mb-8">No links added yet.</p>
-        )}
 
-        {/* QR Code */}
-        <div className="border rounded-2xl p-5 bg-card flex flex-col items-center gap-3">
-          <p className="text-xs text-muted-foreground font-medium tracking-wide uppercase">Scan to share</p>
-          <div className="bg-white rounded-lg p-3">
-            <QRCodeSVG value={profileUrl} size={140} level="H" />
+          {/* Avatar (Overlapping) */}
+          <div className="absolute top-32 z-10 w-32 h-32 rounded-full bg-muted flex items-center justify-center text-4xl font-semibold border-8 border-card overflow-hidden shadow-xl transition-transform hover:scale-105">
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.username} className="w-full h-full object-cover" />
+            ) : (
+              profile.display_name?.[0]?.toUpperCase() || profile.username[0].toUpperCase()
+            )}
           </div>
-          <p className="text-xs text-muted-foreground font-mono">{profileUrl}</p>
+
+          <div className="pt-20 px-6 w-full flex flex-col items-center">
+            <h1 className="text-2xl font-semibold tracking-tight mb-1 text-center">
+              {profile.display_name || profile.username}
+            </h1>
+            <p className="text-sm text-muted-foreground mb-4">
+              @{profile.username}
+            </p>
+            
+            {profile.bio && (
+              <p className="text-sm text-center text-muted-foreground max-w-xs mb-8">
+                {profile.bio}
+              </p>
+            )}
+
+            {/* Social links */}
+            {activeLinks.length > 0 ? (
+              <div className="w-full space-y-3 mb-10">
+                {activeLinks.map(platform => (
+                  <a
+                    key={platform.key}
+                    href={profile.links[platform.key]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full rounded-2xl border bg-background px-5 py-4 text-sm font-medium hover:bg-accent transition-all duration-300 group hover:translate-x-1"
+                  >
+                    <span style={{ color: platform.color }}>{ICONS[platform.key]}</span>
+                    <span className="flex-1">{platform.label}</span>
+                    <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path d="M7 17L17 7M7 7h10v10"/>
+                    </svg>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm mb-10">No links added yet.</p>
+            )}
+
+            {/* QR Code Section */}
+            <div className="w-full border-t border-dashed pt-10 flex flex-col items-center gap-6">
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-xs text-muted-foreground font-medium tracking-wide uppercase">Scan to share</p>
+                <div className="bg-white rounded-3xl p-6 shadow-inner border border-slate-100">
+                  <QRCodeSVG value={profileUrl} size={160} level="H" />
+                </div>
+              </div>
+              
+              <div className="flex flex-col items-center gap-2 w-full">
+                <p className="text-xs text-muted-foreground font-mono truncate max-w-full px-4">{profileUrl}</p>
+                <CopyProfileButton url={profileUrl} />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
