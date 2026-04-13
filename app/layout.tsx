@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={cn(outfit.variable, ibmPlexMono.variable)}>
       <head>
-        <title>QRLinks — Your socials in one scan</title>
+        <title>TeleCle — Your socials in one scan</title>
         <meta name="description" content="Generate a QR code that links to all your social profiles" />
       </head>
       <body className="font-sans antialiased">

@@ -46,8 +46,8 @@ export default function AuthPage() {
       {/* Navbar */}
       <nav className="flex items-center justify-between px-6 py-4 border-b">
         <div className="flex items-center gap-2">
-          <QrCode className="h-5 w-5" />
-          <span className="font-semibold text-sm tracking-tight">QRLinks</span>
+          <img src="/tèlèclè-8.svg" alt="TeleCle" className="h-8 w-5 dark:invert dark:opacity-90 transition-all duration-200" />
+          <span className="font-semibold text-md tracking-tight letter-spacing-[0.1em]">TèlèClè</span>
         </div>
         <ThemeToggle />
       </nav>

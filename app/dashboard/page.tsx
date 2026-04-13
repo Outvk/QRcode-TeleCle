@@ -216,7 +216,7 @@ export default function DashboardPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `qrlinks-${username}.svg`
+    a.download = `telecle-${username}.svg`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -229,33 +229,29 @@ export default function DashboardPage() {
     )
   }
 
-  const profileUrl = `${siteUrl}/${username}`
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-background">
-      {/* Navbar */}
-      <nav className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-background/95 backdrop-blur z-20">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <QrCode className="h-5 w-5" />
-            <span className="font-bold text-sm tracking-tight">QRLinks</span>
-          </div>
+      {loading ? (
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <>
+          {/* Navbar */}
+          <nav className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-background/95 backdrop-blur z-20">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <img src="/tèlèclè-8.svg" alt="TeleCle" className="h-10 w-10 dark:invert dark:opacity-90 transition-all duration-200 -m-1.5" />
+                <span className="font-bold text-sm tracking-tight">TeleCle</span>
+              </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2 h-9 border-dashed">
-                <span className="max-w-[100px] truncate">{currentProfile?.display_name || currentProfile?.username}</span>
-                <ChevronDown className="h-3 w-3 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center gap-1">
+                    <span className="max-w-[100px] truncate">{currentProfile?.display_name || currentProfile?.username}</span>
+                    <ChevronDown className="h-3 w-3 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
               <DropdownMenuLabel>My Profiles</DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -511,7 +507,11 @@ export default function DashboardPage() {
               <CardDescription>Your unique shareable QR code</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* QR Code */}
+              {(() => {
+                const profileUrl = `${siteUrl}/${username}`;
+                return (
+                  <>
+                    {/* QR Code */}
               <div
                 ref={qrRef}
                 className="flex items-center justify-center rounded-3xl bg-white p-8 border shadow-inner overflow-hidden"
@@ -692,10 +692,15 @@ export default function DashboardPage() {
                 <ExternalLink className="h-4 w-4" />
                 Go to Public Profile
               </Button>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

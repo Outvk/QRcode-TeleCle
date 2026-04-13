@@ -47,9 +47,9 @@ export default async function ProfilePage({ params }: { params: { username: stri
         <div className="flex items-center justify-between px-6 py-4">
           <a href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
             <div className="p-2 rounded-xl bg-white/20 dark:bg-black/20 backdrop-blur-sm border border-white/30 dark:border-white/20">
-              <QrCode className="h-4 w-4" />
+              <img src="/tèlèclè-8.svg" alt="TeleCle" className="h-8 w-5 dark:invert dark:opacity-90 transition-all duration-200" />
             </div>
-            <span className="text-sm font-semibold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">QRLinks</span>
+            <span className="text-md font-semibold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">TèlèClè</span>
           </a>
           <div className="p-2 rounded-xl bg-white/20 dark:bg-black/20 backdrop-blur-sm border border-white/30 dark:border-white/20">
             <ThemeToggle />
