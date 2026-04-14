@@ -30,6 +30,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# electron build
+dist/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
@@ -39,3 +42,5 @@ next-env.d.ts
 supabase-schema.sql
 migration-plan.md
 migration-multi-profile.sql
+
+.vercel

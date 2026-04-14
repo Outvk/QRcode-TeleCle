@@ -1,8 +1,9 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/components/Providers'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -36,12 +37,16 @@ const ICONS: Record<string, React.ReactNode> = {
   telegram: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/></svg>,
   gmail: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.818V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-.904.732-1.636 1.636-1.636h.328l10.036 7.5 10.036-7.5h.328c.904 0 1.636.732 1.636 1.636zm-1.636-1.091h-.005L12 11.818 1.641 4.366h-.005C.732 4.366 0 5.098 0 6.002V5.457c0-.904.732-1.636 1.636-1.636h20.728c.904 0 1.636.732 1.636 1.636v.545c0-.904-.732-1.636-1.636-1.636z"/></svg>,
   snapchat: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" className="w-4 h-4"><path d="M561.1 430.6C557.7 421.4 551.3 416.5 544 412.4C542.6 411.6 541.4 410.9 540.3 410.5C538.1 409.4 535.9 408.3 533.7 407.1C510.9 395 493.1 379.8 480.7 361.7C477.2 356.6 474.1 351.2 471.6 345.6C470.5 342.6 470.6 340.9 471.4 339.3C472.2 338.1 473.1 337.1 474.3 336.3C478.2 333.7 482.3 331.1 485 329.3C489.9 326.1 493.8 323.6 496.2 321.9C505.6 315.4 512.1 308.4 516.2 300.6C519.1 295.2 520.7 289.3 521.1 283.2C521.5 277.1 520.5 271 518.3 265.4C512.1 249.1 496.7 239 478 239C474.1 239 470.1 239.4 466.3 240.2C465.3 240.4 464.2 240.7 463.2 240.9C463.4 229.7 463.1 218 462.1 206.4C458.6 165.6 444.3 144.3 429.4 127.2C419.9 116.5 408.7 107.5 396.2 100.5C373.6 87.6 348 81.1 320.1 81.1C292.2 81.1 266.7 87.6 244.1 100.5C231.6 107.5 220.4 116.6 210.8 127.3C195.9 144.3 181.6 165.7 178.1 206.5C177.1 218.1 176.9 229.9 177 241C176 240.7 175 240.5 173.9 240.3C170 239.5 166.1 239.1 162.2 239.1C143.5 239.1 128.1 249.2 121.9 265.5C119.7 271.2 118.7 277.3 119.1 283.3C119.5 289.3 121.1 295.3 124 300.7C128.1 308.5 134.7 315.4 144 322C146.5 323.7 150.4 326.2 155.2 329.4C157.8 331.1 161.7 333.6 165.5 336.1C166.8 337 167.9 338.1 168.8 339.4C169.6 341 169.6 342.8 168.4 346C165.9 351.5 162.9 356.8 159.5 361.8C147.4 379.5 130.1 394.4 108.1 406.4C96.4 412.6 84.2 416.7 79.1 430.7C75.2 441.2 77.8 453.2 87.6 463.3C91.2 467.1 95.4 470.2 100 472.7C109.6 478 119.8 482 130.3 484.8C132.5 485.4 134.6 486.3 136.4 487.5C140 490.6 139.5 495.4 144.2 502.3C146.6 505.9 149.6 509 153.2 511.4C163.2 518.3 174.5 518.8 186.4 519.2C197.2 519.6 209.4 520.1 223.3 524.7C229.1 526.6 235.1 530.3 242 534.6C258.7 544.9 281.6 558.9 319.8 558.9C358 558.9 381.1 544.8 397.9 534.5C404.8 530.3 410.8 526.6 416.4 524.7C430.3 520.1 442.6 519.6 453.3 519.2C465.2 518.7 476.5 518.3 486.5 511.4C490.7 508.5 494.2 504.7 496.7 500.2C500.1 494.4 500.1 490.3 503.3 487.4C505.1 486.2 507 485.3 509.1 484.8C519.8 482 530.1 477.9 539.9 472.6C544.8 470 549.2 466.5 552.9 462.4L553 462.2C562.2 452.3 564.5 440.7 560.8 430.4zM527.1 448.9C506.4 460.4 492.6 459.1 481.8 466C472.7 471.9 478.1 484.5 471.5 489.1C463.4 494.7 439.3 488.7 408.3 499C382.7 507.5 366.3 531.8 320.3 531.8C274.3 531.8 258.3 507.5 232.2 498.9C201.2 488.6 177.1 494.7 169 489C162.4 484.4 167.8 471.8 158.7 465.9C148 459 134.2 460.2 113.4 448.8C100.2 441.5 107.7 437 112.1 434.9C187.2 398.5 199.2 342.3 199.8 338.2C200.4 333.2 201.2 329.2 195.6 324.1C190.2 319.1 166.4 304.4 159.8 299.8C148.9 292.2 144.1 284.5 147.6 275.2C150.1 268.7 156.1 266.3 162.5 266.3C164.5 266.3 166.5 266.5 168.5 267C180.5 269.6 192.2 275.6 198.9 277.2C199.7 277.4 200.5 277.5 201.4 277.5C205 277.5 206.3 275.7 206 271.6C205.2 258.5 203.4 232.9 205.4 209C208.2 176.1 218.8 159.8 231.4 145.4C237.5 138.5 265.9 108.4 320.3 108.4C374.7 108.4 403 138.2 409 145.1C421.6 159.5 432.2 175.8 435 208.7C437.1 232.6 435.3 258.2 434.4 271.3C434.1 275.6 435.4 277.2 439 277.2C439.8 277.2 440.7 277.1 441.5 276.9C448.2 275.3 459.9 269.3 471.9 266.7C473.9 266.3 475.9 266 477.9 266C484.3 266 490.3 268.5 492.8 274.9C496.3 284.3 491.6 291.9 480.6 299.5C474 304.1 450.2 318.8 444.8 323.8C439.2 328.9 440 332.9 440.6 338C441.1 342.2 453.1 398.4 528.3 434.7C532.7 436.9 540.2 441.4 527 448.8z"/></svg>,
+  map: <svg viewBox="0 0 24 24" fill="red" className="w-6 h-4"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>,
+  phone: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>,
 };
 
 export default function DashboardPage() {
   const supabase = createClient()
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
 
+  // All hooks must be called before any conditional logic
   const [profiles, setProfiles] = useState<any[]>([])
   const [currentProfile, setCurrentProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -49,6 +54,7 @@ export default function DashboardPage() {
   const [saved, setSaved] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [activePlatforms, setActivePlatforms] = useState<string[]>([])
+  const [autoDetected, setAutoDetected] = useState<string[]>([])
   
   // Form states (linked to currentProfile)
   const [links, setLinks] = useState<Record<string, string>>({})
@@ -67,9 +73,32 @@ export default function DashboardPage() {
   const [bio, setBio] = useState('')
   
   const [copied, setCopied] = useState(false)
+  const [isPasteModalOpen, setIsPasteModalOpen] = useState(false)
+  const [pasteText, setPasteText] = useState('')
   const qrRef = useRef<HTMLDivElement>(null)
 
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth')
+    }
+  }, [user, authLoading, router])
+
+  // Load profiles on component mount
+  useEffect(() => {
+    loadProfiles()
+  }, [])
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://qrcode-telecle.vercel.app'
+
+  // Show single loader for both auth and profile loading
+  if (authLoading || !user || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   async function loadProfiles(selectId?: string) {
     const { data: { user } } = await supabase.auth.getUser()
@@ -91,10 +120,6 @@ export default function DashboardPage() {
     }
     setLoading(false)
   }
-
-  useEffect(() => {
-    loadProfiles()
-  }, [])
 
   function selectProfile(p: any) {
     setCurrentProfile(p)
@@ -229,25 +254,75 @@ export default function DashboardPage() {
     )
   }
 
+  // Function to detect social media URLs and auto-populate fields
+  function handleSocialMediaPaste(pastedText: string) {
+    const urlPatterns = {
+      instagram: /(?:https?:\/\/)?(?:www\.)?instagram\.com\/[a-zA-Z0-9._]+/g,
+      tiktok: /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[a-zA-Z0-9._]+/g,
+      facebook: /(?:https?:\/\/)?(?:www\.)?facebook\.com\/[a-zA-Z0-9._]+/g,
+      twitter: /(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/[a-zA-Z0-9._]+/g,
+      youtube: /(?:https?:\/\/)?(?:www\.)?youtube\.com\/@[a-zA-Z0-9._]+/g,
+      linkedin: /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9._-]+/g,
+      whatsapp: /(?:https?:\/\/)?(?:www\.)?wa\.me\/[0-9]+/g,
+      pinterest: /(?:https?:\/\/)?(?:www\.)?pinterest\.com\/[a-zA-Z0-9._]+/g,
+      telegram: /(?:https?:\/\/)?(?:www\.)?t\.me\/[a-zA-Z0-9._]+/g,
+      gmail: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+      snapchat: /(?:https?:\/\/)?(?:www\.)?snapchat\.com\/add\/[a-zA-Z0-9._]+/g,
+      map: /(?:https?:\/\/)?(?:www\.)?(?:maps\.google\.com|google\.com\/maps|goo\.gl\/maps)\/[^\s]+/g,
+      phone: /(?:tel:)?\+?[0-9]{8,15}/g,
+    };
+
+    const detectedLinks: Record<string, string> = {};
+    const platformsToActivate: string[] = [];
+
+    // Check each platform pattern
+    Object.entries(urlPatterns).forEach(([platform, pattern]) => {
+      const matches = pastedText.match(pattern);
+      if (matches && matches.length > 0) {
+        const url = matches[0];
+        // Handle phone numbers specially with tel: protocol
+        let fullUrl;
+        if (platform === 'phone') {
+          fullUrl = url.startsWith('tel:') ? url : `tel:${url}`;
+        } else {
+          // Ensure URL has protocol for other platforms
+          fullUrl = url.startsWith('http') ? url : `https://${url}`;
+        }
+        detectedLinks[platform] = fullUrl;
+        platformsToActivate.push(platform);
+      }
+    });
+
+    // Update links state
+    if (Object.keys(detectedLinks).length > 0) {
+      setLinks(prev => ({ ...prev, ...detectedLinks }));
+      setActivePlatforms(prev => [...new Set([...prev, ...platformsToActivate])]);
+      
+      // Show success feedback
+      const detectedPlatforms = Object.keys(detectedLinks);
+      setAutoDetected(detectedPlatforms);
+      
+      // Clear the auto-detected highlight after 3 seconds
+      setTimeout(() => {
+        setAutoDetected([]);
+      }, 3000);
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-background">
-      {loading ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <>
+      <>
           {/* Navbar */}
           <nav className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-background/95 backdrop-blur z-20">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
+              <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <img src="/tèlèclè-8.svg" alt="TeleCle" className="h-10 w-10 dark:invert dark:opacity-90 transition-all duration-200 -m-1.5" />
                 <span className="font-bold text-sm tracking-tight">TeleCle</span>
-              </div>
+              </a>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-1">
+                  <Button variant="ghost" className="flex items-center gap-1 border border-dashed">
                     <span className="max-w-[100px] truncate">{currentProfile?.display_name || currentProfile?.username}</span>
                     <ChevronDown className="h-3 w-3 opacity-50" />
                   </Button>
@@ -415,10 +490,30 @@ export default function DashboardPage() {
           {/* Social links */}
           <Card className="shadow-sm overflow-hidden">
             <CardHeader className="border-b bg-slate-50/50 dark:bg-slate-900/20">
-              <CardTitle className="text-base">Social Links</CardTitle>
-              <CardDescription>Select the platforms you use to add your links</CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base">Social Links</CardTitle>
+                  <CardDescription className="hidden sm:block">Select the platforms you use to add your links. You can also paste multiple social media URLs at once to auto-fill them!</CardDescription>
+                  <CardDescription className="sm:hidden">Select platforms or paste links to auto-fill</CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPasteModalOpen(true)}
+                  className="gap-2 text-xs"
+                >
+                  <Copy className="h-3 w-3" />
+                  full paste
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent 
+              className="p-0"
+              onPaste={(e) => {
+                const pastedText = e.clipboardData.getData('text');
+                handleSocialMediaPaste(pastedText);
+              }}
+            >
               {/* Platform Selector as Tags */}
               <div className="p-4 bg-muted/20 flex flex-wrap gap-2">
                 {SOCIAL_PLATFORMS.map(p => {
@@ -448,36 +543,51 @@ export default function DashboardPage() {
               </div>
 
               {/* Multi-Active Input Area */}
-              <div className="border-t divide-y">
+              <div className="border-t">
                 {activePlatforms.length > 0 ? (
-                  activePlatforms.map(platformKey => {
-                    const platform = SOCIAL_PLATFORMS.find(p => p.key === platformKey);
-                    if (!platform) return null;
-                    return (
-                      <div key={platformKey} className="p-5 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor={`link-${platformKey}`} className="flex items-center gap-2 text-xs" style={{ color: platform.color }}>
-                            {ICONS[platformKey]}
-                            {platform.label} URL
-                          </Label>
-                          <button 
-                            onClick={() => togglePlatform(platformKey)}
-                            className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                          >
-                            Hide
-                          </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2">
+                    {activePlatforms.map(platformKey => {
+                      const platform = SOCIAL_PLATFORMS.find(p => p.key === platformKey);
+                      if (!platform) return null;
+                      return (
+                        <div key={platformKey} className="p-5 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200 border-b md:border-r even:md:border-r-0">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor={`link-${platformKey}`} className="flex items-center gap-2 text-xs" style={{ color: platform.color }}>
+                              {ICONS[platformKey]}
+                              {platform.label} URL
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => setLinks(prev => ({ ...prev, [platformKey]: '' }))}
+                                className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+                                title="Clear URL"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                Remove
+                              </button>
+                              <button 
+                                onClick={() => togglePlatform(platformKey)}
+                                className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                              >
+                                Hide
+                              </button>
+                            </div>
+                          </div>
+                          <Input
+                            id={`link-${platformKey}`}
+                            type="url"
+                            value={links[platformKey] || ''}
+                            onChange={e => setLinks(prev => ({ ...prev, [platformKey]: e.target.value }))}
+                            placeholder={platform.placeholder}
+                            className={cn(
+                              "h-11 shadow-sm border-slate-200 dark:border-slate-800 transition-all duration-300",
+                              autoDetected.includes(platformKey) && "border-green-500 bg-green-50 dark:bg-green-950/20 animate-pulse"
+                            )}
+                          />
                         </div>
-                        <Input
-                          id={`link-${platformKey}`}
-                          type="url"
-                          value={links[platformKey] || ''}
-                          onChange={e => setLinks(prev => ({ ...prev, [platformKey]: e.target.value }))}
-                          placeholder={platform.placeholder}
-                          className="h-11 shadow-sm border-slate-200 dark:border-slate-800"
-                        />
-                      </div>
-                    );
-                  })
+                      );
+                    })}
+                  </div>
                 ) : (
                   <div className="text-center py-10 bg-slate-50/30 dark:bg-transparent">
                     <p className="text-sm text-muted-foreground">No platforms selected. Click a tag above to start adding links.</p>
@@ -700,6 +810,56 @@ export default function DashboardPage() {
         </div>
       </div>
         </>
+
+      {/* Paste Links Modal */}
+      {isPasteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-md shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Copy className="h-4 w-4" />
+                Paste Social Links
+              </CardTitle>
+              <CardDescription>
+                Paste your social media URLs here and we will auto-detect them for you.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Textarea
+                value={pasteText}
+                onChange={e => setPasteText(e.target.value)}
+                placeholder="Paste Instagram, TikTok, YouTube, and other social links here..."
+                className="min-h-[120px] resize-none"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setIsPasteModalOpen(false)
+                    setPasteText('')
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1"
+                  onClick={() => {
+                    if (pasteText.trim()) {
+                      handleSocialMediaPaste(pasteText)
+                      setIsPasteModalOpen(false)
+                      setPasteText('')
+                    }
+                  }}
+                  disabled={!pasteText.trim()}
+                >
+                  Add Links
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   )

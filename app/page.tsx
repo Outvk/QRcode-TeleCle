@@ -2,10 +2,19 @@
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { QrCode, Zap, Lock, Infinity } from 'lucide-react'
+import { useAuth } from '@/components/Providers'
+import { QrCode, Zap, Lock, Infinity, User, LogOut } from 'lucide-react'
+import { createClient } from '@/lib/supabase'
 
 export default function HomePage() {
   const router = useRouter()
+  const { user, loading } = useAuth()
+  const supabase = createClient()
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
   return (
     <div className="min-h-screen flex flex-col">
       {/* Nav */}
@@ -16,8 +25,23 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button variant="ghost" size="sm" onClick={() => router.push('/auth')}>Sign in</Button>
-          <Button size="sm" onClick={() => router.push('/auth')}>Get started</Button>
+          {loading ? (
+            <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+          ) : user ? (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
+                Dashboard
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => router.push('/auth')}>Sign in</Button>
+              <Button size="sm" onClick={() => router.push('/auth')}>Get started</Button>
+            </>
+          )}
         </div>
       </nav>
 

@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useAuth } from '@/components/Providers'
 import { QrCode, Loader2 } from 'lucide-react'
 
 export default function AuthPage() {
@@ -16,7 +17,15 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const router = useRouter()
+  const { user } = useAuth()
   const supabase = createClient()
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard')
+    }
+  }, [user, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -45,10 +54,10 @@ export default function AuthPage() {
     <div className="min-h-screen flex flex-col">
       {/* Navbar */}
       <nav className="flex items-center justify-between px-6 py-4 border-b">
-        <div className="flex items-center gap-2">
+        <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <img src="/tèlèclè-8.svg" alt="TeleCle" className="h-8 w-5 dark:invert dark:opacity-90 transition-all duration-200" />
           <span className="font-semibold text-md tracking-tight letter-spacing-[0.1em]">TèlèClè</span>
-        </div>
+        </a>
         <ThemeToggle />
       </nav>
 
