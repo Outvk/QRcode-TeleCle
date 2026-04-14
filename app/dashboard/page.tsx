@@ -257,17 +257,17 @@ export default function DashboardPage() {
   // Function to detect social media URLs and auto-populate fields
   function handleSocialMediaPaste(pastedText: string) {
     const urlPatterns = {
-      instagram: /(?:https?:\/\/)?(?:www\.)?instagram\.com\/[a-zA-Z0-9._]+/g,
-      tiktok: /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[a-zA-Z0-9._]+/g,
-      facebook: /(?:https?:\/\/)?(?:www\.)?facebook\.com\/[a-zA-Z0-9._]+/g,
-      twitter: /(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/[a-zA-Z0-9._]+/g,
-      youtube: /(?:https?:\/\/)?(?:www\.)?youtube\.com\/@[a-zA-Z0-9._]+/g,
-      linkedin: /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9._-]+/g,
-      whatsapp: /(?:https?:\/\/)?(?:www\.)?wa\.me\/[0-9]+/g,
-      pinterest: /(?:https?:\/\/)?(?:www\.)?pinterest\.com\/[a-zA-Z0-9._]+/g,
-      telegram: /(?:https?:\/\/)?(?:www\.)?t\.me\/[a-zA-Z0-9._]+/g,
+      instagram: /(?:https?:\/\/)?(?:www\.)?instagram\.com\/[^\s]+/g,
+      tiktok: /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/[^\s]+/g,
+      facebook: /(?:https?:\/\/)?(?:www\.)?facebook\.com\/[^\s]+/g,
+      twitter: /(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/[^\s]+/g,
+      youtube: /(?:https?:\/\/)?(?:www\.)?youtube\.com\/[^\s]+/g,
+      linkedin: /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s]+/g,
+      whatsapp: /(?:https?:\/\/)?(?:www\.)?wa\.me\/[^\s]+/g,
+      pinterest: /(?:https?:\/\/)?(?:www\.)?pinterest\.com\/[^\s]+/g,
+      telegram: /(?:https?:\/\/)?(?:www\.)?t\.me\/[^\s]+/g,
       gmail: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-      snapchat: /(?:https?:\/\/)?(?:www\.)?snapchat\.com\/add\/[a-zA-Z0-9._]+/g,
+      snapchat: /(?:https?:\/\/)?(?:www\.)?snapchat\.com\/add\/[^\s]+/g,
       map: /(?:https?:\/\/)?(?:www\.)?(?:maps\.google\.com|google\.com\/maps|goo\.gl\/maps)\/[^\s]+/g,
       phone: /(?:tel:)?\+?[0-9]{8,15}/g,
     };
@@ -512,6 +512,11 @@ export default function DashboardPage() {
             <CardContent 
               className="p-0"
               onPaste={(e) => {
+                // Skip auto-detection if pasting into an input field
+                const target = e.target as HTMLElement;
+                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                  return;
+                }
                 const pastedText = e.clipboardData.getData('text');
                 handleSocialMediaPaste(pastedText);
               }}
