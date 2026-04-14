@@ -24,6 +24,9 @@ export default function HomePage() {
           <span className="font-semibold text-md tracking-tight">TèlèClè</span>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/profiles')}>
+            Profiles
+          </Button>
           <ThemeToggle />
           {loading ? (
             <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />

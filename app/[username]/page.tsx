@@ -1,13 +1,116 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
 import { SOCIAL_PLATFORMS } from '@/lib/utils'
 import { CustomQRCode } from '@/components/CustomQRCode'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { QrCode } from 'lucide-react'
+import { QrCode, Eye, Users } from 'lucide-react'
 import { CopyProfileButton } from '@/components/CopyProfileButton'
 import Footer from '@/components/Footer'
 
 export const dynamic = 'force-dynamic'
+
+// Simple hash function for fingerprint
+function createFingerprint(ip: string, userAgent: string): string {
+  const str = `${ip}-${userAgent}`
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash
+  }
+  return Math.abs(hash).toString(36)
+}
+
+// Track unique visitor and return count
+async function trackAndGetUniqueVisits(profileId: string): Promise<{ unique: number, total: number }> {
+  const supabase = createServerSupabaseClient()
+  const headersList = await headers()
+  
+  // Get visitor info for fingerprinting
+  const ip = headersList.get('x-forwarded-for')?.split(',')[0] || 
+             headersList.get('x-real-ip') || 
+             'unknown'
+  const userAgent = headersList.get('user-agent') || 'unknown'
+  const fingerprint = createFingerprint(ip, userAgent)
+  const today = new Date().toISOString().split('T')[0]
+  
+  // Check if this visitor already exists
+  const { data: existing } = await supabase
+    .from('unique_visitors')
+    .select('id, visit_count')
+    .eq('profile_id', profileId)
+    .eq('visitor_fingerprint', fingerprint)
+    .single()
+  
+  const isNewVisitor = !existing
+  
+  if (existing) {
+    // Update last visit time and increment their personal visit count
+    await supabase
+      .from('unique_visitors')
+      .update({ 
+        last_visit_at: new Date().toISOString(),
+        visit_count: existing.visit_count + 1
+      })
+      .eq('id', existing.id)
+  } else {
+    // Create new unique visitor record
+    await supabase
+      .from('unique_visitors')
+      .insert({ 
+        profile_id: profileId, 
+        visitor_fingerprint: fingerprint,
+        visit_count: 1
+      })
+  }
+  
+  // Update daily stats
+  const { data: dailyExisting } = await supabase
+    .from('daily_visits')
+    .select('id, unique_visitors, total_views')
+    .eq('profile_id', profileId)
+    .eq('visit_date', today)
+    .single()
+  
+  if (dailyExisting) {
+    await supabase
+      .from('daily_visits')
+      .update({
+        total_views: dailyExisting.total_views + 1,
+        unique_visitors: isNewVisitor ? dailyExisting.unique_visitors + 1 : dailyExisting.unique_visitors
+      })
+      .eq('id', dailyExisting.id)
+  } else {
+    await supabase
+      .from('daily_visits')
+      .insert({
+        profile_id: profileId,
+        visit_date: today,
+        unique_visitors: 1,
+        total_views: 1
+      })
+  }
+  
+  // Get total unique visitors count
+  const { count: uniqueCount } = await supabase
+    .from('unique_visitors')
+    .select('*', { count: 'exact', head: true })
+    .eq('profile_id', profileId)
+  
+  // Get total visits (all visits from all visitors)
+  const { data: visitors } = await supabase
+    .from('unique_visitors')
+    .select('visit_count')
+    .eq('profile_id', profileId)
+  
+  const totalVisits = visitors?.reduce((sum, v) => sum + (v.visit_count || 0), 0) || 0
+  
+  return { 
+    unique: uniqueCount || 0, 
+    total: totalVisits 
+  }
+}
 
 // Social platform icons (simple SVG paths)
 const ICONS: Record<string, React.ReactNode> = {
@@ -38,6 +141,9 @@ export default async function ProfilePage({ params }: { params: { username: stri
 
   if (!profile) notFound()
 
+  // Track this visit and get counts (unique visitors + total views)
+  const { unique: uniqueVisitors, total: totalViews } = await trackAndGetUniqueVisits(profile.id)
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://qrcode-telecle.vercel.app'
   const profileUrl = `${siteUrl}/${profile.username}`
   const activeLinks = SOCIAL_PLATFORMS.filter(p => profile.links?.[p.key])
@@ -53,8 +159,16 @@ export default async function ProfilePage({ params }: { params: { username: stri
             </div>
             <span className="text-md font-semibold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">TèlèClè</span>
           </a>
-          <div className="p-2 rounded-xl bg-white/20 dark:bg-black/20 backdrop-blur-sm border border-white/30 dark:border-white/20">
-            <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <a 
+              href="/profiles" 
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
+            >
+              Profiles
+            </a>
+            <div className="p-2 rounded-xl bg-white/20 dark:bg-black/20 backdrop-blur-sm border border-white/30 dark:border-white/20">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </div>
@@ -89,9 +203,21 @@ export default async function ProfilePage({ params }: { params: { username: stri
             <h1 className="text-2xl font-semibold tracking-tight mb-1 text-center">
               {profile.display_name || profile.username}
             </h1>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-2">
               @{profile.username}
             </p>
+            
+            {/* Visitor Stats */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium" title="Unique visitors">
+                <Users className="w-3.5 h-3.5" />
+                <span>{uniqueVisitors.toLocaleString()} {uniqueVisitors === 1 ? 'visitor' : 'visitors'}</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-xs" title="Total views">
+                <Eye className="w-3.5 h-3.5" />
+                <span>{totalViews.toLocaleString()} {totalViews === 1 ? 'view' : 'views'}</span>
+              </div>
+            </div>
             
             {profile.bio && (
               <p className="text-sm text-center text-muted-foreground max-w-xs mb-8">

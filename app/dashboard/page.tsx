@@ -13,7 +13,7 @@ import { CustomQRCode } from '@/components/CustomQRCode'
 import { SOCIAL_PLATFORMS, cn } from '@/lib/utils'
 import {
   QrCode, LogOut, Save, Loader2, ExternalLink,
-  Download, Copy, Check, User, Plus, Trash2, ChevronDown
+  Download, Copy, Check, User, Plus, Trash2, ChevronDown, Users
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -327,7 +327,29 @@ export default function DashboardPage() {
                     <ChevronDown className="h-3 w-3 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuContent 
+              align="start" 
+              className="w-56 max-h-80 overflow-y-auto custom-scrollbar"
+              style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'hsl(var(--muted-foreground) / 0.3) transparent',
+              } as React.CSSProperties}
+            >
+              <style>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                  width: 5px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                  background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                  background-color: hsl(var(--muted-foreground) / 0.4);
+                  border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                  background-color: hsl(var(--muted-foreground) / 0.6);
+                }
+              `}</style>
               <DropdownMenuLabel>My Profiles</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {profiles.map(p => (
@@ -349,12 +371,11 @@ export default function DashboardPage() {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => router.push(`/${username}`)} 
-            className="gap-2 hidden sm:flex"
-            disabled={!username}
+            onClick={() => router.push('/profiles')} 
+            className="gap-2"
           >
-            <ExternalLink className="h-3.5 w-3.5" />
-            View
+            <Users className="h-3.5 w-3.5" />
+            Profiles
           </Button>
           <ThemeToggle />
           <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Log out">
