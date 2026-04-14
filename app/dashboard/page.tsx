@@ -440,23 +440,25 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="avatarUrl">Avatar Image URL</Label>
-                      <Input
-                        id="avatarUrl"
-                        value={avatarUrl}
-                        onChange={e => setAvatarUrl(e.target.value)}
-                        placeholder="https://example.com/photo.jpg"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="bannerUrl">Banner Image URL</Label>
-                      <Input
-                        id="bannerUrl"
-                        value={bannerUrl}
-                        onChange={e => setBannerUrl(e.target.value)}
-                        placeholder="https://example.com/banner.jpg"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="avatarUrl">Avatar Image URL</Label>
+                        <Input
+                          id="avatarUrl"
+                          value={avatarUrl}
+                          onChange={e => setAvatarUrl(e.target.value)}
+                          placeholder="https://example.com/photo.jpg"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="bannerUrl">Banner Image URL</Label>
+                        <Input
+                          id="bannerUrl"
+                          value={bannerUrl}
+                          onChange={e => setBannerUrl(e.target.value)}
+                          placeholder="https://example.com/banner.jpg"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="qrLogoUrl">QR Code Logo URL (Optional)</Label>
