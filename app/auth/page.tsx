@@ -32,6 +32,21 @@ export default function AuthPage() {
     setLoading(true)
     setMessage('')
 
+    // Check rate limit for login attempts (5 attempts per 15 minutes)
+    const { data: rateLimitData, error: rateLimitError } = await supabase
+      .rpc('check_rate_limit', {
+        p_identifier: email.toLowerCase(),
+        p_action: 'login',
+        p_max_attempts: 5,
+        p_window_minutes: 15
+      })
+    
+    if (rateLimitError || !rateLimitData) {
+      setMessage('Too many login attempts. Please try again in 15 minutes.')
+      setLoading(false)
+      return
+    }
+
     if (mode === 'signup') {
       const { error } = await supabase.auth.signUp({ email, password })
       if (error) {

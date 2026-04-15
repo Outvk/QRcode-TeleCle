@@ -50,8 +50,11 @@ export default function SysLoginPage() {
     // Check if user is admin (by email or role in metadata)
     const isAdmin = data.user?.email === 'admin@telecle.com' || 
                     data.user?.user_metadata?.role === 'admin'
+    
+    // Check if email is confirmed
+    const emailConfirmed = data.user?.email_confirmed_at || data.user?.confirmed_at
 
-    if (!isAdmin) {
+    if (!isAdmin || !emailConfirmed) {
       await supabase.auth.signOut()
       setError('Unauthorized access')
       setLoading(false)

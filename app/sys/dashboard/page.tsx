@@ -128,7 +128,10 @@ export default function SysDashboardPage() {
     const isAdmin = user?.email === 'admin@telecle.com' || 
                     user?.user_metadata?.role === 'admin'
     
-    if (!isAdmin) {
+    // Check if email is confirmed
+    const emailConfirmed = user?.email_confirmed_at || user?.confirmed_at
+    
+    if (!isAdmin || !emailConfirmed) {
       router.push('/sys')
       return
     }

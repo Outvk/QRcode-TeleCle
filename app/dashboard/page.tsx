@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { CustomQRCode } from '@/components/CustomQRCode'
-import { SOCIAL_PLATFORMS, cn } from '@/lib/utils'
+import { SOCIAL_PLATFORMS, cn, validateUsername, validateUrl, validateImageUrl } from '@/lib/utils'
 import {
   QrCode, LogOut, Save, Loader2, ExternalLink,
   Download, Copy, Check, User, Plus, Trash2, ChevronDown, Users
@@ -80,6 +80,7 @@ export default function DashboardPage() {
   const [userDailyLimit, setUserDailyLimit] = useState(8)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [checkingUsername, setCheckingUsername] = useState(false)
+  const [usernameError, setUsernameError] = useState<string | null>(null)
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -212,6 +213,44 @@ export default function DashboardPage() {
 
   async function handleSave() {
     if (!currentProfile) return
+
+    // Validate username
+    const usernameValidation = validateUsername(username)
+    if (!usernameValidation.valid) {
+      alert('Username error: ' + usernameValidation.error)
+      return
+    }
+
+    // Validate image URLs
+    const avatarValidation = validateImageUrl(avatarUrl)
+    if (!avatarValidation.valid) {
+      alert('Avatar URL error: ' + avatarValidation.error)
+      return
+    }
+
+    const bannerValidation = validateImageUrl(bannerUrl)
+    if (!bannerValidation.valid) {
+      alert('Banner URL error: ' + bannerValidation.error)
+      return
+    }
+
+    const qrLogoValidation = validateImageUrl(qrLogoUrl)
+    if (!qrLogoValidation.valid) {
+      alert('QR Logo URL error: ' + qrLogoValidation.error)
+      return
+    }
+
+    // Validate social links
+    for (const [key, url] of Object.entries(links)) {
+      if (url) {
+        const urlValidation = validateUrl(url)
+        if (!urlValidation.valid) {
+          alert(`Link error for ${key}: ` + urlValidation.error)
+          return
+        }
+      }
+    }
+
     setSaving(true)
     const { error } = await supabase
       .from('profiles')
@@ -277,6 +316,20 @@ export default function DashboardPage() {
 
     if (count && count >= dailyLimit) {
       alert(`Daily limit reached: You can only create up to ${dailyLimit} profiles per day. Please try again tomorrow.`)
+      return
+    }
+
+    // Check rate limit for profile creation (3 attempts per 10 minutes)
+    const { data: rateLimitData, error: rateLimitError } = await supabase
+      .rpc('check_rate_limit', {
+        p_identifier: user.id,
+        p_action: 'profile_create',
+        p_max_attempts: 3,
+        p_window_minutes: 10
+      })
+    
+    if (rateLimitError || !rateLimitData) {
+      alert('Too many profile creation attempts. Please try again in 10 minutes.')
       return
     }
 
@@ -564,18 +617,25 @@ export default function DashboardPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="username" className={usernameAvailable === false ? 'text-red-500' : ''}>
+                      <Label htmlFor="username" className={usernameAvailable === false || usernameError ? 'text-red-500' : ''}>
                         Username (Public URL)
                         {checkingUsername && <span className="text-xs text-muted-foreground ml-2">checking...</span>}
                         {usernameAvailable === false && <span className="text-xs text-red-500 ml-2">already exist</span>}
                         {usernameAvailable === true && <span className="text-xs text-green-500 ml-2">available</span>}
+                        {usernameError && <span className="text-xs text-red-500 ml-2">{usernameError}</span>}
                       </Label>
                       <Input
                         id="username"
                         value={username}
-                        onChange={e => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
+                        onChange={e => {
+                          const value = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '')
+                          setUsername(value)
+                          // Validate on change
+                          const validation = validateUsername(value)
+                          setUsernameError(validation.valid ? null : validation.error ?? null)
+                        }}
                         placeholder="yourname"
-                        className={usernameAvailable === false ? 'border-red-500 focus-visible:ring-red-500' : ''}
+                        className={usernameAvailable === false || usernameError ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       />
                     </div>
                   </div>
