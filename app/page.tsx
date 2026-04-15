@@ -24,17 +24,17 @@ export default function HomePage() {
           <span className="font-semibold text-md tracking-tight">TèlèClè</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/profiles')}>
-            Profiles
-          </Button>
-          <ThemeToggle />
           {loading ? (
             <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
           ) : user ? (
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => router.push('/profiles')}>
+                Profiles
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
                 Dashboard
               </Button>
+              <ThemeToggle />
               <Button variant="ghost" size="icon" onClick={handleLogout}>
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -43,6 +43,7 @@ export default function HomePage() {
             <>
               <Button variant="ghost" size="sm" onClick={() => router.push('/auth')}>Sign in</Button>
               <Button size="sm" onClick={() => router.push('/auth')}>Get started</Button>
+              <ThemeToggle />
             </>
           )}
         </div>
@@ -50,6 +51,23 @@ export default function HomePage() {
 
       {/* Hero */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-20 text-center">
+        {/* Animated QR Code above badge */}
+        <div className="w-full max-w-[200px] h-6 mb-2 relative overflow-hidden ">
+          <img 
+            src="/qr-code.svg" 
+            alt="QR Code" 
+            className="h-4 w-4 absolute top-1 animate-roll-qr dark:invert ml-1"
+          />
+          {/* Sparkle trail - 8 small dots (black in light mode, white in dark mode) */}
+          <div className="absolute top-2 left-0 w-1 h-1 rounded-full bg-foreground animate-sparkle-1 shadow-[0_0_4px_rgba(0,0,0,0.5)] dark:shadow-[0_0_4px_rgba(255,255,255,0.5)]" />
+          <div className="absolute top-1 left-0 w-px h-px rounded-full bg-foreground animate-sparkle-2" />
+          <div className="absolute top-3 left-0 w-px h-px rounded-full bg-foreground animate-sparkle-3" />
+          <div className="absolute top-1.5 left-0 w-px h-px rounded-full bg-foreground animate-sparkle-4 opacity-80" />
+          <div className="absolute top-2.5 left-0 w-px h-px rounded-full bg-foreground animate-sparkle-5" />
+          <div className="absolute top-0.5 left-0 w-px h-px rounded-full bg-foreground animate-sparkle-6" />
+          <div className="absolute top-3.5 left-0 w-px h-px rounded-full bg-foreground animate-sparkle-7 opacity-70" />
+          <div className="absolute top-1 left-0 w-px h-px rounded-full bg-foreground animate-sparkle-8" />
+        </div>
         <div className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs text-muted-foreground mb-6">
           <Zap className="h-3 w-3" /> Free forever — no subscriptions
         </div>

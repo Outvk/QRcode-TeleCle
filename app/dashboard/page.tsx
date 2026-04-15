@@ -76,6 +76,10 @@ export default function DashboardPage() {
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const qrRef = useRef<HTMLDivElement>(null)
+  const [dailyProfilesRemaining, setDailyProfilesRemaining] = useState(8)
+  const [userDailyLimit, setUserDailyLimit] = useState(8)
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
+  const [checkingUsername, setCheckingUsername] = useState(false)
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -86,8 +90,43 @@ export default function DashboardPage() {
 
   // Load profiles on component mount
   useEffect(() => {
-    loadProfiles()
-  }, [])
+    if (!authLoading && user) {
+      loadProfiles()
+    }
+  }, [authLoading, user])
+
+  // Check username availability (debounced)
+  useEffect(() => {
+    if (!username || !currentProfile) {
+      setUsernameAvailable(null)
+      return
+    }
+
+    // Skip check if username hasn't changed from current profile
+    if (username === currentProfile.username) {
+      setUsernameAvailable(null)
+      return
+    }
+
+    setCheckingUsername(true)
+    const timer = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username)
+        .neq('id', currentProfile.id)
+        .maybeSingle()
+
+      if (error) {
+        setUsernameAvailable(null)
+      } else {
+        setUsernameAvailable(data === null)
+      }
+      setCheckingUsername(false)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [username, currentProfile])
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://qrcode-telecle.vercel.app'
 
@@ -119,6 +158,35 @@ export default function DashboardPage() {
       setCurrentProfile(null)
     }
     setLoading(false)
+    // Check daily profile limit
+    await checkDailyProfileLimit(user.id)
+  }
+
+  async function checkDailyProfileLimit(userId: string) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    // Get user's custom daily limit (default to 8)
+    const { data: userLimitData } = await supabase
+      .from('user_limits')
+      .select('daily_profile_limit')
+      .eq('user_id', userId)
+      .single()
+
+    const dailyLimit = userLimitData?.daily_profile_limit || 8
+    setUserDailyLimit(dailyLimit)
+
+    const { count } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', today.toISOString())
+      .lt('created_at', tomorrow.toISOString())
+
+    const remaining = Math.max(0, dailyLimit - (count || 0))
+    setDailyProfilesRemaining(remaining)
   }
 
   function selectProfile(p: any) {
@@ -180,6 +248,38 @@ export default function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    // Check daily limit - use custom limit from database (default 8)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    // Get user's custom daily limit
+    const { data: userLimitData } = await supabase
+      .from('user_limits')
+      .select('daily_profile_limit')
+      .eq('user_id', user.id)
+      .single()
+
+    const dailyLimit = userLimitData?.daily_profile_limit || 8
+
+    const { count, error: countError } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .gte('created_at', today.toISOString())
+      .lt('created_at', tomorrow.toISOString())
+
+    if (countError) {
+      alert('Error checking daily limit: ' + countError.message)
+      return
+    }
+
+    if (count && count >= dailyLimit) {
+      alert(`Daily limit reached: You can only create up to ${dailyLimit} profiles per day. Please try again tomorrow.`)
+      return
+    }
+
     setSaving(true)
     const newUsername = `profile_${Math.floor(Math.random() * 10000)}`
     const { data, error } = await supabase
@@ -196,6 +296,11 @@ export default function DashboardPage() {
     setSaving(false)
     if (data) {
       await loadProfiles(data.id)
+      // Refresh daily limit after creation
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (currentUser) {
+        await checkDailyProfileLimit(currentUser.id)
+      }
     } else {
       alert('Error creating profile: ' + error?.message)
     }
@@ -359,9 +464,17 @@ export default function DashboardPage() {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleCreateProfile} className="text-primary focus:text-primary">
+              <DropdownMenuItem 
+                onClick={handleCreateProfile} 
+                className="text-primary focus:text-primary"
+                disabled={dailyProfilesRemaining === 0}
+                title={dailyProfilesRemaining === 0 ? `Daily limit reached (${userDailyLimit}/${userDailyLimit}). Try again tomorrow.` : `You can create ${dailyProfilesRemaining} more profile${dailyProfilesRemaining !== 1 ? 's' : ''} today (limit: ${userDailyLimit})`}
+              >
                 <Plus className="h-3.5 w-3.5 mr-2" />
                 Create New Profile
+                <span className={`ml-auto text-xs ${dailyProfilesRemaining === 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  {dailyProfilesRemaining}/{userDailyLimit} today
+                </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -451,12 +564,18 @@ export default function DashboardPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="username">Username (Public URL)</Label>
+                      <Label htmlFor="username" className={usernameAvailable === false ? 'text-red-500' : ''}>
+                        Username (Public URL)
+                        {checkingUsername && <span className="text-xs text-muted-foreground ml-2">checking...</span>}
+                        {usernameAvailable === false && <span className="text-xs text-red-500 ml-2">already exist</span>}
+                        {usernameAvailable === true && <span className="text-xs text-green-500 ml-2">available</span>}
+                      </Label>
                       <Input
                         id="username"
                         value={username}
                         onChange={e => setUsername(e.target.value.toLowerCase().replace(/\s/g, ''))}
                         placeholder="yourname"
+                        className={usernameAvailable === false ? 'border-red-500 focus-visible:ring-red-500' : ''}
                       />
                     </div>
                   </div>

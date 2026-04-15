@@ -40,10 +40,24 @@ export default function AuthPage() {
         setMessage('Check your email for a confirmation link!')
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setMessage(error.message)
       } else {
+        // Check if user is blocked
+        const { data: blockedData } = await supabase
+          .from('blocked_users')
+          .select('user_id')
+          .eq('user_id', data.user?.id)
+          .single()
+        
+        if (blockedData) {
+          await supabase.auth.signOut()
+          setMessage('Your account has been blocked. Contact support.')
+          setLoading(false)
+          return
+        }
+        
         router.push('/dashboard')
       }
     }

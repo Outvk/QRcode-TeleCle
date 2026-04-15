@@ -43,7 +43,7 @@ export function VisitorChart({ profileId }: VisitorChartProps) {
       .select('visit_date, unique_visitors, total_views')
       .eq('profile_id', profileId)
       .order('visit_date', { ascending: true })
-      .limit(30)
+      .limit(7)
 
     // Create a map of existing visit data by date string (YYYY-MM-DD)
     const visitMap = new Map<string, { unique_visitors: number; total_views: number }>()
@@ -54,10 +54,10 @@ export function VisitorChart({ profileId }: VisitorChartProps) {
       })
     })
 
-    // Generate all 30 days (from 29 days ago to today)
+    // Generate last 7 days (from 6 days ago to today)
     const allDays: DailyVisit[] = []
     const today = new Date()
-    for (let i = 29; i >= 0; i--) {
+    for (let i = 6; i >= 0; i--) {
       const date = new Date(today)
       date.setDate(date.getDate() - i)
       const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD
@@ -117,7 +117,7 @@ export function VisitorChart({ profileId }: VisitorChartProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="w-4 h-4" />
-            Daily Visitors (Last 30 Days)
+            Daily Visitors (Last 7 Days)
           </CardTitle>
           <div className="flex gap-2 text-sm">
             <button
@@ -162,13 +162,11 @@ export function VisitorChart({ profileId }: VisitorChartProps) {
               <XAxis 
                 dataKey="date" 
                 stroke="hsl(var(--muted-foreground))"
-                fontSize={10}
+                fontSize={11}
                 tickLine={false}
                 axisLine={false}
                 interval={0}
-                angle={-45}
-                textAnchor="end"
-                height={60}
+                height={30}
               />
               <YAxis 
                 stroke="hsl(var(--muted-foreground))"

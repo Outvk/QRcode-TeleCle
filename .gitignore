@@ -43,4 +43,10 @@ supabase-schema.sql
 migration-plan.md
 migration-multi-profile.sql
 
+# sql schema files (allow specific files in root)
+*.sql
+!create-*.sql
+!fix-*.sql
+!migration-*.sql
+
 .vercel

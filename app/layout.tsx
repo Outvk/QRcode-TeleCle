@@ -1,6 +1,7 @@
 import './globals.css'
 import { Outfit, IBM_Plex_Mono } from 'next/font/google'
 import { Providers } from '@/components/Providers'
+import { AnnouncementBanner } from '@/components/AnnouncementBanner'
 import { cn } from '@/lib/utils'
 
 const outfit = Outfit({ 
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-sans antialiased">
         <Providers>
+          <AnnouncementBanner />
           {children}
         </Providers>
       </body>
