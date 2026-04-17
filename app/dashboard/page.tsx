@@ -81,6 +81,7 @@ export default function DashboardPage() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [checkingUsername, setCheckingUsername] = useState(false)
   const [usernameError, setUsernameError] = useState<string | null>(null)
+  const [isDirty, setIsDirty] = useState(false)
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -89,12 +90,14 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router])
 
-  // Load profiles on component mount
+  // Load profiles only once on mount
   useEffect(() => {
     if (!authLoading && user) {
-      loadProfiles()
+      loadProfiles(currentProfile?.id)
     }
-  }, [authLoading, user])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Empty deps - only run once on mount
+
 
   // Check username availability (debounced)
   useEffect(() => {
@@ -152,7 +155,10 @@ export default function DashboardPage() {
 
     if (data && data.length > 0) {
       setProfiles(data)
-      const toSelect = selectId ? data.find(p => p.id === selectId) : data[0]
+      // Use provided selectId, or fall back to sessionStorage, or default to first
+      const savedProfileId = sessionStorage.getItem('selectedProfileId')
+      const idToSelect = selectId || savedProfileId
+      const toSelect = idToSelect ? data.find(p => p.id === idToSelect) : data[0]
       selectProfile(toSelect || data[0])
     } else {
       setProfiles([])
@@ -192,6 +198,10 @@ export default function DashboardPage() {
 
   function selectProfile(p: any) {
     setCurrentProfile(p)
+    // Save selected profile ID to sessionStorage for persistence
+    sessionStorage.setItem('selectedProfileId', p.id)
+    // Clear dirty state when switching profiles
+    setIsDirty(false)
     setDisplayName(p.display_name || '')
     setUsername(p.username || '')
     setBio(p.bio || '')
@@ -276,6 +286,8 @@ export default function DashboardPage() {
     if (!error) {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+      // Clear dirty state after successful save
+      setIsDirty(false)
       // Update local profiles list
       setProfiles(prev => prev.map(p => p.id === currentProfile.id ? { ...p, display_name: displayName, username, bio, links } : p))
     } else {
@@ -405,6 +417,7 @@ export default function DashboardPage() {
   }
 
   function togglePlatform(key: string) {
+    setIsDirty(true)
     setActivePlatforms(prev => 
       prev.includes(key) 
         ? prev.filter(k => k !== key) 
@@ -453,6 +466,7 @@ export default function DashboardPage() {
 
     // Update links state
     if (Object.keys(detectedLinks).length > 0) {
+      setIsDirty(true);
       setLinks(prev => ({ ...prev, ...detectedLinks }));
       setActivePlatforms(prev => [...new Set([...prev, ...platformsToActivate])]);
       
@@ -612,7 +626,7 @@ export default function DashboardPage() {
                       <Input
                         id="displayName"
                         value={displayName}
-                        onChange={e => setDisplayName(e.target.value)}
+                        onChange={e => { setDisplayName(e.target.value); setIsDirty(true); }}
                         placeholder="Your name"
                       />
                     </div>
@@ -630,6 +644,7 @@ export default function DashboardPage() {
                         onChange={e => {
                           const value = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '')
                           setUsername(value)
+                          setIsDirty(true)
                           // Validate on change
                           const validation = validateUsername(value)
                           setUsernameError(validation.valid ? null : validation.error ?? null)
@@ -646,7 +661,7 @@ export default function DashboardPage() {
                         <Input
                           id="avatarUrl"
                           value={avatarUrl}
-                          onChange={e => setAvatarUrl(e.target.value)}
+                          onChange={e => { setAvatarUrl(e.target.value); setIsDirty(true); }}
                           placeholder="https://example.com/photo.jpg"
                         />
                       </div>
@@ -655,7 +670,7 @@ export default function DashboardPage() {
                         <Input
                           id="bannerUrl"
                           value={bannerUrl}
-                          onChange={e => setBannerUrl(e.target.value)}
+                          onChange={e => { setBannerUrl(e.target.value); setIsDirty(true); }}
                           placeholder="https://example.com/banner.jpg"
                         />
                       </div>
@@ -665,7 +680,7 @@ export default function DashboardPage() {
                       <Input
                         id="qrLogoUrl"
                         value={qrLogoUrl}
-                        onChange={e => setQrLogoUrl(e.target.value)}
+                        onChange={e => { setQrLogoUrl(e.target.value); setIsDirty(true); }}
                         placeholder="https://example.com/logo.png"
                       />
                       <p className="text-xs text-muted-foreground">
@@ -680,7 +695,7 @@ export default function DashboardPage() {
                 <Textarea
                   id="bio"
                   value={bio}
-                  onChange={e => setBio(e.target.value)}
+                  onChange={e => { setBio(e.target.value); setIsDirty(true); }}
                   placeholder="Tell people a little about yourself..."
                   className="resize-none"
                   rows={3}
@@ -765,7 +780,7 @@ export default function DashboardPage() {
                             </Label>
                             <div className="flex items-center gap-2">
                               <button 
-                                onClick={() => setLinks(prev => ({ ...prev, [platformKey]: '' }))}
+                                onClick={() => { setLinks(prev => ({ ...prev, [platformKey]: '' })); setIsDirty(true); }}
                                 className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
                                 title="Clear URL"
                               >
@@ -784,7 +799,7 @@ export default function DashboardPage() {
                             id={`link-${platformKey}`}
                             type="url"
                             value={links[platformKey] || ''}
-                            onChange={e => setLinks(prev => ({ ...prev, [platformKey]: e.target.value }))}
+                            onChange={e => { setLinks(prev => ({ ...prev, [platformKey]: e.target.value })); setIsDirty(true); }}
                             placeholder={platform.placeholder}
                             className={cn(
                               "h-11 shadow-sm border-slate-200 dark:border-slate-800 transition-all duration-300",
@@ -875,12 +890,12 @@ export default function DashboardPage() {
                             id="qrColor"
                             type="color"
                             value={qrColor}
-                            onChange={(e) => setQrColor(e.target.value)}
+                            onChange={(e) => { setQrColor(e.target.value); setIsDirty(true); }}
                             className="w-12 h-8 p-1 rounded"
                           />
                           <Input
                             value={qrColor}
-                            onChange={(e) => setQrColor(e.target.value)}
+                            onChange={(e) => { setQrColor(e.target.value); setIsDirty(true); }}
                             placeholder="#000000"
                             className="flex-1 text-xs"
                           />
@@ -893,12 +908,12 @@ export default function DashboardPage() {
                             id="qrBgColor"
                             type="color"
                             value={qrBgColor}
-                            onChange={(e) => setQrBgColor(e.target.value)}
+                            onChange={(e) => { setQrBgColor(e.target.value); setIsDirty(true); }}
                             className="w-12 h-8 p-1 rounded"
                           />
                           <Input
                             value={qrBgColor}
-                            onChange={(e) => setQrBgColor(e.target.value)}
+                            onChange={(e) => { setQrBgColor(e.target.value); setIsDirty(true); }}
                             placeholder="#FFFFFF"
                             className="flex-1 text-xs"
                           />
@@ -915,7 +930,7 @@ export default function DashboardPage() {
                           min="0"
                           max="50"
                           value={qrBorderRadius}
-                          onChange={(e) => setQrBorderRadius(Number(e.target.value))}
+                          onChange={(e) => { setQrBorderRadius(Number(e.target.value)); setIsDirty(true); }}
                           className="w-full"
                         />
                       </div>
@@ -927,7 +942,7 @@ export default function DashboardPage() {
                           min="20"
                           max="80"
                           value={qrLogoSize}
-                          onChange={(e) => setQrLogoSize(Number(e.target.value))}
+                          onChange={(e) => { setQrLogoSize(Number(e.target.value)); setIsDirty(true); }}
                           className="w-full"
                         />
                       </div>
@@ -941,7 +956,7 @@ export default function DashboardPage() {
                         min="0"
                         max="50"
                         value={qrLogoBorderRadius}
-                        onChange={(e) => setQrLogoBorderRadius(Number(e.target.value))}
+                        onChange={(e) => { setQrLogoBorderRadius(Number(e.target.value)); setIsDirty(true); }}
                         className="w-full"
                       />
                       <p className="text-xs text-muted-foreground">
@@ -958,7 +973,7 @@ export default function DashboardPage() {
                         <button
                           id="qrLogoHasBg"
                           type="button"
-                          onClick={() => setQrLogoHasBg(!qrLogoHasBg)}
+                          onClick={() => { setQrLogoHasBg(!qrLogoHasBg); setIsDirty(true); }}
                           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                             qrLogoHasBg ? 'bg-primary' : 'bg-muted'
                           }`}

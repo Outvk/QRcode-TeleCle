@@ -150,8 +150,8 @@ export default async function ProfilePage({ params }: { params: { username: stri
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Glassmorphic top bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/10 dark:bg-black/10 border-b border-white/20 dark:border-white/10">
+      {/* Glassmorphic top bar - sticky so announcement can be above */}
+      <div className="sticky top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/10 dark:bg-black/10 border-b border-white/20 dark:border-white/10">
         <div className="flex items-center justify-between px-6 py-4">
           <a href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
             <div className="p-2 rounded-xl bg-white/20 dark:bg-black/20 backdrop-blur-sm border border-white/30 dark:border-white/20">
@@ -172,9 +172,6 @@ export default async function ProfilePage({ params }: { params: { username: stri
           </div>
         </div>
       </div>
-
-      {/* Add padding to account for fixed header */}
-      <div className="h-20"></div>
 
       {/* Profile Card Container */}
       <div className="flex-1 flex flex-col items-center justify-start px-4 pt-12 pb-20 max-w-lg mx-auto w-full">

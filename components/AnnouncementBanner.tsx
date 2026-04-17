@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, Megaphone } from 'lucide-react'
+import { X, Megaphone, ExternalLink, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase'
 
 interface Announcement {
   message: string
@@ -10,12 +11,79 @@ interface Announcement {
   type: 'info' | 'warning' | 'success'
 }
 
+// Function to convert URLs and WhatsApp numbers in text to clickable links
+function LinkifyText({ text }: { text: string }) {
+  // Convert WhatsApp numbers (+1234567890) to wa.me links first
+  const processedText = text.replace(/\+(\d[\d\s-]{6,}\d)/g, (match, number) => {
+    const cleanNumber = number.replace(/[\s-]/g, '')
+    return `https://wa.me/${cleanNumber}`
+  })
+
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const parts = processedText.split(urlRegex)
+  const matches = processedText.match(urlRegex) || []
+
+  return (
+    <>
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {matches[i] && (
+            <a
+              href={matches[i]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-0.5 underline hover:no-underline font-semibold"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {matches[i].includes('wa.me') ? (
+                <>
+                  <Phone className="w-3 h-3" />
+                  WhatsApp +{matches[i].replace('https://wa.me/', '')}
+                </>
+              ) : (
+                <>
+                  {matches[i].replace(/^https?:\/\//, '').slice(0, 30)}
+                  {matches[i].replace(/^https?:\/\//, '').length > 30 ? '...' : ''}
+                  <ExternalLink className="w-3 h-3" />
+                </>
+              )}
+            </a>
+          )}
+        </span>
+      ))}
+    </>
+  )
+}
+
 export function AnnouncementBanner() {
+  const supabase = createClient()
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    // Load announcement from localStorage
+    // Load from database first
+    async function loadFromDatabase() {
+      const { data } = await supabase
+        .from('system_announcements')
+        .select('*')
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      
+      if (data) {
+        setAnnouncement({
+          message: data.message,
+          active: data.active,
+          type: data.type as 'info' | 'warning' | 'success'
+        })
+      }
+    }
+    
+    loadFromDatabase()
+    
+    // Fallback: Load from localStorage for immediate updates from same session
     const stored = localStorage.getItem('system_announcement')
     if (stored) {
       try {
@@ -27,7 +95,7 @@ export function AnnouncementBanner() {
     }
   }, [])
 
-  // Listen for changes (when admin updates)
+  // Listen for changes (when admin updates in same session)
   useEffect(() => {
     const handleStorage = () => {
       const stored = localStorage.getItem('system_announcement')
@@ -37,10 +105,8 @@ export function AnnouncementBanner() {
           setAnnouncement(parsed)
           setDismissed(false)
         } catch {
-          setAnnouncement(null)
+          // Invalid JSON, ignore
         }
-      } else {
-        setAnnouncement(null)
       }
     }
 
@@ -59,11 +125,13 @@ export function AnnouncementBanner() {
   }
 
   return (
-    <div className={`fixed top-0 left-0 right-0 z-[100] border-b px-4 py-3 ${typeStyles[announcement.type || 'info']}`}>
+    <div className={`border-b px-4 py-3 ${typeStyles[announcement.type || 'info']}`}>
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Megaphone className="w-5 h-5 flex-shrink-0" />
-          <p className="text-sm font-medium">{announcement.message}</p>
+          <p className="text-sm font-medium">
+            <LinkifyText text={announcement.message} />
+          </p>
         </div>
         <Button
           variant="ghost"

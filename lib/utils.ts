@@ -70,10 +70,14 @@ export function validateImageUrl(url: string): { valid: boolean; error?: string 
   
   // Check for common image extensions or data URLs
   const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp']
-  const hasValidExtension = allowedExtensions.some(ext => url.toLowerCase().endsWith(ext))
+  // Remove query parameters and hash for extension check
+  const urlWithoutParams = url.split('?')[0].split('#')[0]
+  const hasValidExtension = allowedExtensions.some(ext => urlWithoutParams.toLowerCase().endsWith(ext))
   const isDataUrl = url.startsWith('data:image/')
+  // Also allow URLs from known image hosts (Google Images, etc.)
+  const isKnownImageHost = /\.(gstatic|googleusercontent|ggpht|ytimg|fbcdn|instagram|cdninstagram)\./.test(url)
   
-  if (!hasValidExtension && !isDataUrl) {
+  if (!hasValidExtension && !isDataUrl && !isKnownImageHost) {
     return { valid: false, error: 'Only image URLs are allowed (jpg, png, gif, webp, svg)' }
   }
   

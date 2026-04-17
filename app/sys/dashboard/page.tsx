@@ -25,7 +25,9 @@ import {
   X,
   Save,
   Trophy,
-  Settings2
+  Settings2,
+  ExternalLink,
+  Phone
 } from 'lucide-react'
 import { VisitorChart } from '@/components/VisitorChart'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -62,6 +64,51 @@ interface SystemStats {
   totalViews: number
 }
 
+// Function to convert URLs and WhatsApp numbers in text to clickable links
+function LinkifyText({ text }: { text: string }) {
+  // Convert WhatsApp numbers (+1234567890) to wa.me links first
+  const processedText = text.replace(/\+(\d[\d\s-]{6,}\d)/g, (match, number) => {
+    const cleanNumber = number.replace(/[\s-]/g, '')
+    return `https://wa.me/${cleanNumber}`
+  })
+
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const parts = processedText.split(urlRegex)
+  const matches = processedText.match(urlRegex) || []
+
+  return (
+    <>
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {matches[i] && (
+            <a
+              href={matches[i]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-0.5 underline hover:no-underline font-semibold"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {matches[i].includes('wa.me') ? (
+                <>
+                  <Phone className="w-3 h-3" />
+                  WhatsApp +{matches[i].replace('https://wa.me/', '')}
+                </>
+              ) : (
+                <>
+                  {matches[i].replace(/^https?:\/\//, '').slice(0, 30)}
+                  {matches[i].replace(/^https?:\/\//, '').length > 30 ? '...' : ''}
+                  <ExternalLink className="w-3 h-3" />
+                </>
+              )}
+            </a>
+          )}
+        </span>
+      ))}
+    </>
+    )
+}
+
 export default function SysDashboardPage() {
   const supabase = createClient()
   const router = useRouter()
@@ -77,6 +124,7 @@ export default function SysDashboardPage() {
   const [users, setUsers] = useState<UserData[]>([])
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set())
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'profiles' | 'users' | 'top' | 'announcements'>('profiles')
   const [adminEmail, setAdminEmail] = useState('')
   const profilesTableRef = useRef<HTMLDivElement>(null)
@@ -105,6 +153,7 @@ export default function SysDashboardPage() {
   useEffect(() => {
     checkAdmin()
     loadSystemData()
+    loadAnnouncement()
   }, [])
 
   // Close chart when clicking outside the profiles table
@@ -121,12 +170,16 @@ export default function SysDashboardPage() {
     }
   }, [selectedProfileId])
 
+  // Get profiles for a specific user
+  function getUserProfiles(userId: string): Profile[] {
+    return profiles.filter(p => p.user_id === userId)
+  }
+
   async function checkAdmin() {
     const { data: { session } } = await supabase.auth.getSession()
     const user = session?.user
     
-    const isAdmin = user?.email === 'admin@telecle.com' || 
-                    user?.user_metadata?.role === 'admin'
+    const isAdmin = user?.user_metadata?.role === 'admin'
     
     // Check if email is confirmed
     const emailConfirmed = user?.email_confirmed_at || user?.confirmed_at
@@ -137,6 +190,51 @@ export default function SysDashboardPage() {
     }
     
     setAdminEmail(user?.email || '')
+  }
+
+  async function loadAnnouncement() {
+    const { data } = await supabase
+      .from('system_announcements')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    
+    if (data) {
+      setAnnouncement({
+        message: data.message,
+        active: data.active,
+        type: data.type as 'info' | 'warning' | 'success'
+      })
+    }
+  }
+
+  async function saveAnnouncement() {
+    // Get existing announcement ID if any
+    const { data: existing } = await supabase
+      .from('system_announcements')
+      .select('id')
+      .limit(1)
+      .single()
+    
+    const { error } = await supabase
+      .from('system_announcements')
+      .upsert({
+        id: existing?.id || undefined,
+        message: announcement.message,
+        active: announcement.active,
+        type: announcement.type,
+        updated_at: new Date().toISOString()
+      })
+    
+    if (error) {
+      alert('Failed to save: ' + error.message)
+      return
+    }
+    
+    // Also update localStorage for immediate effect on current session
+    localStorage.setItem('system_announcement', JSON.stringify(announcement))
+    alert('Announcement saved to database! It will appear on all pages.')
   }
 
   async function loadSystemData() {
@@ -657,9 +755,10 @@ export default function SysDashboardPage() {
                     </thead>
                     <tbody>
                       {users.map((user) => (
+                        <React.Fragment key={user.id}>
                         <tr 
-                          key={user.id}
-                          className={`border-t hover:bg-muted/30 transition-colors ${user.is_blocked ? 'bg-red-50/50 dark:bg-red-950/20' : ''}`}
+                          onClick={() => setSelectedUserId(selectedUserId === user.id ? null : user.id)}
+                          className={`border-t hover:bg-muted/30 transition-colors cursor-pointer ${user.is_blocked ? 'bg-red-50/50 dark:bg-red-950/20' : ''} ${selectedUserId === user.id ? 'bg-primary/10' : ''}`}
                         >
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
@@ -669,6 +768,9 @@ export default function SysDashboardPage() {
                               <div>
                                 <p className={`font-medium text-sm ${user.is_blocked ? 'text-red-600 line-through' : ''}`}>{user.email}</p>
                                 {user.is_blocked && <p className="text-xs text-red-500">BLOCKED</p>}
+                                {selectedUserId === user.id && (
+                                  <p className="text-xs text-muted-foreground mt-1">Click to close</p>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -676,7 +778,7 @@ export default function SysDashboardPage() {
                             {user.id.slice(0, 8)}...
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <span className="text-sm font-medium">{user.profile_count}</span>
+                            <span className={`text-sm font-medium ${selectedUserId === user.id ? 'text-primary' : ''}`}>{user.profile_count}</span>
                           </td>
                           <td className="py-3 px-4 text-center">
                             {editingUserLimit === user.id ? (
@@ -734,7 +836,7 @@ export default function SysDashboardPage() {
                             {new Date(user.created_at).toLocaleDateString()}
                           </td>
                           <td className="py-3 px-4 text-sm text-muted-foreground">
-                            {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}
+                            {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never'}
                           </td>
                           <td className="py-3 px-4 text-center">
                             {user.is_blocked ? (
@@ -753,7 +855,7 @@ export default function SysDashboardPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => unblockUser(user.id)}
+                                  onClick={(e) => { e.stopPropagation(); unblockUser(user.id); }}
                                   className="text-green-600 hover:text-green-700 hover:bg-green-50"
                                 >
                                   Unblock
@@ -762,7 +864,7 @@ export default function SysDashboardPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => blockUser(user.id)}
+                                  onClick={(e) => { e.stopPropagation(); blockUser(user.id); }}
                                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                   disabled={user.is_admin}
                                 >
@@ -772,7 +874,7 @@ export default function SysDashboardPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => deleteUser(user.id, user.email)}
+                                onClick={(e) => { e.stopPropagation(); deleteUser(user.id, user.email); }}
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                 disabled={user.is_admin}
                                 title={user.is_admin ? 'Cannot delete admin' : 'Delete user permanently'}
@@ -782,6 +884,87 @@ export default function SysDashboardPage() {
                             </div>
                           </td>
                         </tr>
+                        {selectedUserId === user.id && (
+                          <tr className="bg-muted/20">
+                            <td colSpan={9} className="py-4 px-4">
+                              <div className="max-w-4xl mx-auto">
+                                <div className="space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-medium text-sm">User Profiles ({getUserProfiles(user.id).length})</h4>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={(e) => { e.stopPropagation(); setSelectedUserId(null); }}
+                                      className="text-xs"
+                                    >
+                                      <X className="w-3 h-3 mr-1" />
+                                      Close
+                                    </Button>
+                                  </div>
+                                  {getUserProfiles(user.id).length === 0 ? (
+                                    <p className="text-sm text-muted-foreground py-4 text-center">
+                                      No profiles created yet.
+                                    </p>
+                                  ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                      {getUserProfiles(user.id).map(profile => (
+                                        <div 
+                                          key={profile.id} 
+                                          className="bg-card border rounded-lg p-3 space-y-2 hover:border-primary/50 transition-colors"
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold">
+                                              {(profile.display_name?.[0] || profile.username[0]).toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-sm truncate">{profile.display_name || profile.username}</p>
+                                              <p className="text-xs text-muted-foreground">@{profile.username}</p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
+                                            <span className="flex items-center gap-1">
+                                              <Link2 className="w-3 h-3" />
+                                              {Object.values(profile.links || {}).filter((l): l is string => typeof l === 'string' && l.trim() !== '').length}
+                                            </span>
+                                            <span className="flex items-center gap-1 text-green-600">
+                                              <Users className="w-3 h-3" />
+                                              {profile.visit_count?.toLocaleString() || 0}
+                                            </span>
+                                            <span className="flex items-center gap-1 text-blue-600">
+                                              <Eye className="w-3 h-3" />
+                                              {profile.total_views?.toLocaleString() || 0}
+                                            </span>
+                                          </div>
+                                          <div className="flex gap-2 pt-1">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-7 text-xs flex-1"
+                                              onClick={(e) => { e.stopPropagation(); window.open(`/${profile.username}`, '_blank'); }}
+                                            >
+                                              <ArrowRight className="w-3 h-3 mr-1" />
+                                              View
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-7 text-xs flex-1"
+                                              onClick={(e) => { e.stopPropagation(); openEditProfile(profile); }}
+                                            >
+                                              <Edit3 className="w-3 h-3 mr-1" />
+                                              Edit
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>
@@ -885,10 +1068,7 @@ export default function SysDashboardPage() {
                     </label>
                   </div>
                   <Button 
-                    onClick={() => {
-                      localStorage.setItem('system_announcement', JSON.stringify(announcement))
-                      alert('Announcement saved! It will appear on all pages.')
-                    }}
+                    onClick={saveAnnouncement}
                     className="gap-2"
                   >
                     <Save className="w-4 h-4" />
@@ -899,7 +1079,7 @@ export default function SysDashboardPage() {
                   <h4 className="font-medium mb-2">Preview:</h4>
                   {announcement.active && announcement.message ? (
                     <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg text-blue-800 dark:text-blue-200 text-sm">
-                      {announcement.message}
+                      <LinkifyText text={announcement.message} />
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">No active announcement</p>
