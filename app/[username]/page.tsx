@@ -6,6 +6,7 @@ import { CustomQRCode } from '@/components/CustomQRCode'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { QrCode, Eye, Users } from 'lucide-react'
 import { CopyProfileButton } from '@/components/CopyProfileButton'
+import { GmailAppLink } from '@/components/GmailAppLink'
 import Footer from '@/components/Footer'
 
 export const dynamic = 'force-dynamic'
@@ -226,13 +227,31 @@ export default async function ProfilePage({ params }: { params: { username: stri
             {activeLinks.length > 0 ? (
               <div className="w-full space-y-3 mb-10">
                 {activeLinks.map(platform => {
-                  // Get the link URL
-                  let href = profile.links[platform.key]
-                  // For Gmail, convert email to Gmail compose URL
-                  if (platform.key === 'gmail' && href) {
-                    const email = href.replace(/^mailto:/, '').trim()
-                    href = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(email)}`
+                  const href = profile.links[platform.key]
+                  const isGmail = platform.key === 'gmail'
+                  const linkContent = (
+                    <>
+                      <span style={{ color: platform.color }}>{ICONS[platform.key]}</span>
+                      <span className="flex-1">{platform.label}</span>
+                      <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M7 17L17 7M7 7h10v10"/>
+                      </svg>
+                    </>
+                  )
+                  
+                  if (isGmail) {
+                    const email = href?.replace(/^mailto:/, '').trim() || ''
+                    return (
+                      <GmailAppLink
+                        key={platform.key}
+                        email={email}
+                        className="flex items-center gap-3 w-full rounded-2xl border bg-background px-5 py-4 text-sm font-medium hover:bg-accent transition-all duration-300 group hover:translate-x-1"
+                      >
+                        {linkContent}
+                      </GmailAppLink>
+                    )
                   }
+                  
                   return (
                     <a
                       key={platform.key}
@@ -241,11 +260,7 @@ export default async function ProfilePage({ params }: { params: { username: stri
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 w-full rounded-2xl border bg-background px-5 py-4 text-sm font-medium hover:bg-accent transition-all duration-300 group hover:translate-x-1"
                     >
-                      <span style={{ color: platform.color }}>{ICONS[platform.key]}</span>
-                      <span className="flex-1">{platform.label}</span>
-                      <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M7 17L17 7M7 7h10v10"/>
-                      </svg>
+                      {linkContent}
                     </a>
                   )
                 })}
