@@ -253,6 +253,25 @@ export default function DashboardPage() {
     // Validate social links
     for (const [key, url] of Object.entries(links)) {
       if (url) {
+        // Skip URL validation for Gmail (email) and phone (tel:)
+        if (key === 'gmail') {
+          // Basic email validation
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+          if (!emailRegex.test(url)) {
+            alert(`Link error for ${key}: Invalid email format`)
+            return
+          }
+          continue
+        }
+        if (key === 'phone') {
+          // Basic phone validation - just needs some digits
+          const phoneRegex = /[\d+\-\(\)\s]{6,}/
+          if (!phoneRegex.test(url)) {
+            alert(`Link error for ${key}: Invalid phone number`)
+            return
+          }
+          continue
+        }
         const urlValidation = validateUrl(url)
         if (!urlValidation.valid) {
           alert(`Link error for ${key}: ` + urlValidation.error)

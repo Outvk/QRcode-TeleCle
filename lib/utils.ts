@@ -95,7 +95,7 @@ export const SOCIAL_PLATFORMS = [
   { key: 'whatsapp',  label: 'WhatsApp',  placeholder: 'https://wa.me/213XXXXXXXXX',     color: '#25D366' },
   { key: 'pinterest', label: 'Pinterest', placeholder: 'https://pinterest.com/username',  color: '#E60023' },
   { key: 'telegram',  label: 'Telegram',  placeholder: 'https://t.me/username',           color: '#0088CC' },
-  { key: 'gmail',     label: 'Gmail',     placeholder: 'mailto:email@example.com',        color: '#EA4335' },
+  { key: 'gmail',     label: 'Gmail',     placeholder: 'rive@gmail.com',                  color: '#EA4335' },
   { key: 'snapchat',  label: 'Snapchat',  placeholder: 'https://snapchat.com/add/username',color: '#FFFC00' },
   { key: 'map',       label: 'Map',       placeholder: 'https://maps.google.com/?q=...', color: '#4285F4' },
   { key: 'phone',     label: 'Phone',     placeholder: 'tel:+1234567890',                 color: '#10B981' },
