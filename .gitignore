@@ -50,3 +50,7 @@ migration-multi-profile.sql
 !migration-*.sql
 
 .vercel
+
+.vercel
+.env*.local
+.node_modules
