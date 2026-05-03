@@ -54,3 +54,5 @@ migration-multi-profile.sql
 .vercel
 .env*.local
 node_modules
+.vercel
+.env*.local
