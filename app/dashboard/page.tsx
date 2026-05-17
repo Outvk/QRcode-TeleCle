@@ -254,7 +254,7 @@ export default function DashboardPage() {
     // Validate social links
     for (const [key, url] of Object.entries(links)) {
       if (url) {
-        // Skip URL validation for Gmail (email) and phone (tel:)
+        // Skip URL validation for Gmail (email) and phone/fax (tel:)
         if (key === 'gmail') {
           // Basic email validation
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -271,6 +271,10 @@ export default function DashboardPage() {
             alert(`Link error for ${key}: Invalid phone number`)
             return
           }
+          // Auto-add tel: prefix if not present
+          if (!url.startsWith('tel:')) {
+            links[key] = `tel:${url}`
+          }
           continue
         }
         if (key === 'fax') {
@@ -279,6 +283,10 @@ export default function DashboardPage() {
           if (!faxRegex.test(url.replace(/tel:/, ''))) {
             alert(`Link error for ${key}: Fax number must be exactly 9 digits`)
             return
+          }
+          // Auto-add tel: prefix if not present
+          if (!url.startsWith('tel:')) {
+            links[key] = `tel:${url}`
           }
           continue
         }

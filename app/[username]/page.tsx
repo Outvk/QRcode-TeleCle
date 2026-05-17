@@ -228,9 +228,15 @@ export default async function ProfilePage({ params }: { params: { username: stri
             {activeLinks.length > 0 ? (
               <div className="w-full space-y-3 mb-10">
                 {activeLinks.map(platform => {
-                  const href = profile.links[platform.key]
+                  let href = profile.links[platform.key]
                   const isGmail = platform.key === 'gmail'
                   const isPhoneOrFax = platform.key === 'phone' || platform.key === 'fax'
+                  
+                  // Auto-add tel: prefix for phone/fax if not present
+                  if (isPhoneOrFax && href && !href.startsWith('tel:')) {
+                    href = `tel:${href}`
+                  }
+                  
                   const linkContent = (
                     <>
                       <span style={{ color: platform.color }}>{ICONS[platform.key]}</span>
