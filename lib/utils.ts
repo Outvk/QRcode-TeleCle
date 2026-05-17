@@ -99,4 +99,5 @@ export const SOCIAL_PLATFORMS = [
   { key: 'snapchat',  label: 'Snapchat',  placeholder: 'https://snapchat.com/add/username',color: '#FFFC00' },
   { key: 'map',       label: 'Map',       placeholder: 'https://maps.google.com/?q=...', color: '#4285F4' },
   { key: 'phone',     label: 'Phone',     placeholder: 'tel:+1234567890',                 color: '#10B981' },
+  { key: 'fax',       label: 'Fax',       placeholder: 'tel:+1234567890',                 color: '#64748B' },
 ]

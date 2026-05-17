@@ -59,7 +59,7 @@ const DotMaterial = (() => {
     uniforms: {
       resolution: { value: new THREE.Vector2() },
       mouseTrail: { value: null },
-      gridSize: { value: 100 },
+      gridSize: { value: 1100 },
       pixelColor: { value: new THREE.Color('#ffffff') }
     },
     vertexShader: `
