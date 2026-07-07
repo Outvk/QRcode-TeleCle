@@ -115,7 +115,7 @@ export default function HomePage() {
             <span className="text-muted-foreground/50">"MADE BY CHOUAIB"</span>
           </p>
           <a 
-            href="https://www.instagram.com/out_vk/" 
+            href="https://www.instagram.com/outriverr/" 
             target="_blank" 
             rel="noopener noreferrer"
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-xs font-normal normal-case tracking-normal mb-6"

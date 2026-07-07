@@ -264,7 +264,7 @@ export default function DashboardPage() {
           }
           continue
         }
-        if (key === 'phone') {
+        if (key.startsWith('phone')) {
           // Basic phone validation - just needs some digits
           const phoneRegex = /[\d+\-\(\)\s]{6,}/
           if (!phoneRegex.test(url)) {
@@ -488,17 +488,28 @@ export default function DashboardPage() {
     Object.entries(urlPatterns).forEach(([platform, pattern]) => {
       const matches = pastedText.match(pattern);
       if (matches && matches.length > 0) {
-        const url = matches[0];
-        // Handle phone numbers specially with tel: protocol
-        let fullUrl;
         if (platform === 'phone') {
-          fullUrl = url.startsWith('tel:') ? url : `tel:${url}`;
+          const keys = ['phone', 'phone2', 'phone3'];
+          matches.slice(0, 3).forEach((url, index) => {
+            const key = keys[index];
+            const fullUrl = url.startsWith('tel:') ? url : `tel:${url}`;
+            detectedLinks[key] = fullUrl;
+            platformsToActivate.push(key);
+          });
+        } else if (platform === 'whatsapp') {
+          const keys = ['whatsapp', 'whatsapp2'];
+          matches.slice(0, 2).forEach((url, index) => {
+            const key = keys[index];
+            const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+            detectedLinks[key] = fullUrl;
+            platformsToActivate.push(key);
+          });
         } else {
-          // Ensure URL has protocol for other platforms
-          fullUrl = url.startsWith('http') ? url : `https://${url}`;
+          const url = matches[0];
+          const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+          detectedLinks[platform] = fullUrl;
+          platformsToActivate.push(platform);
         }
-        detectedLinks[platform] = fullUrl;
-        platformsToActivate.push(platform);
       }
     });
 
@@ -793,7 +804,7 @@ export default function DashboardPage() {
                       )}
                     >
                       <span className={cn(isActive ? "text-primary-foreground" : "")} style={{ color: isActive ? undefined : p.color }}>
-                        {ICONS[p.key] || <div className="w-4 h-4 rounded-full bg-current opacity-20" />}
+                        {ICONS[p.key] || ICONS[p.key.replace(/\d+$/, '')] || <div className="w-4 h-4 rounded-full bg-current opacity-20" />}
                       </span>
                       <span>{p.label}</span>
                       {hasValue && !isActive && <div className="ml-1 w-1 h-1 rounded-full bg-primary" />}
@@ -813,7 +824,7 @@ export default function DashboardPage() {
                         <div key={platformKey} className="p-5 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200 border-b md:border-r even:md:border-r-0">
                           <div className="flex items-center justify-between">
                             <Label htmlFor={`link-${platformKey}`} className="flex items-center gap-2 text-xs" style={{ color: platform.color }}>
-                              {ICONS[platformKey]}
+                              {ICONS[platformKey] || ICONS[platformKey.replace(/\d+$/, '')]}
                               {platform.label} URL
                             </Label>
                             <div className="flex items-center gap-2">

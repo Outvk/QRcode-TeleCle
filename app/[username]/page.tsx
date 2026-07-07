@@ -230,7 +230,7 @@ export default async function ProfilePage({ params }: { params: { username: stri
                 {activeLinks.map(platform => {
                   let href = profile.links[platform.key]
                   const isGmail = platform.key === 'gmail'
-                  const isPhoneOrFax = platform.key === 'phone' || platform.key === 'fax'
+                  const isPhoneOrFax = platform.key.startsWith('phone') || platform.key === 'fax'
                   
                   // Auto-add tel: prefix for phone/fax if not present
                   if (isPhoneOrFax && href && !href.startsWith('tel:')) {
@@ -239,7 +239,7 @@ export default async function ProfilePage({ params }: { params: { username: stri
                   
                   const linkContent = (
                     <>
-                      <span style={{ color: platform.color }}>{ICONS[platform.key]}</span>
+                      <span style={{ color: platform.color }}>{ICONS[platform.key] || ICONS[platform.key.replace(/\d+$/, '')]}</span>
                       <span className="flex-1">{platform.label}</span>
                       <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path d="M7 17L17 7M7 7h10v10"/>
