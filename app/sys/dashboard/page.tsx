@@ -43,6 +43,10 @@ interface Profile {
   created_at: string
   visit_count?: number
   total_views?: number
+  month_visit_count?: number
+  month_total_views?: number
+  daily_visit_count?: number
+  daily_total_views?: number
 }
 
 interface UserData {
@@ -62,6 +66,10 @@ interface SystemStats {
   totalLinks: number
   totalVisits: number
   totalViews: number
+  monthVisits: number
+  monthViews: number
+  dailyVisits: number
+  dailyViews: number
 }
 
 // Function to convert URLs and WhatsApp numbers in text to clickable links
@@ -118,8 +126,13 @@ export default function SysDashboardPage() {
     totalProfiles: 0,
     totalLinks: 0,
     totalVisits: 0,
-    totalViews: 0
+    totalViews: 0,
+    monthVisits: 0,
+    monthViews: 0,
+    dailyVisits: 0,
+    dailyViews: 0
   })
+  const [timeframe, setTimeframe] = useState<'overall' | 'month' | 'daily'>('overall')
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [users, setUsers] = useState<UserData[]>([])
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set())
@@ -307,24 +320,82 @@ export default function SysDashboardPage() {
       profile_count: profileCountMap[u.id] || 0
     }))
 
-    // Load all visitor data
+    // Load all visitor data (with timestamps for timeframe filtering)
     const { data: visitorsData } = await supabase
       .from('unique_visitors')
-      .select('profile_id, visitor_fingerprint, visit_count')
+      .select('profile_id, visitor_fingerprint, visit_count, last_visit_at')
 
-    // Calculate visitor counts per profile
-    const visitorCounts: Record<string, number> = {}
-    const viewCounts: Record<string, number> = {}
-    
+    // Get all profile IDs for daily_visits query
+    const profileIds = (profilesData || []).map(p => p.id)
+
+    // Fetch daily visits for views-based timeframe filtering
+    const { data: dailyVisitsData } = profileIds.length > 0 ? await supabase
+      .from('daily_visits')
+      .select('profile_id, visit_date, unique_visitors, total_views')
+      .in('profile_id', profileIds) : { data: [] }
+
+    // Build time boundaries
+    const now = new Date()
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const todayUtcStr = now.toISOString().split('T')[0]
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0]
+
+    // --- Unique Visitors (from unique_visitors, filtered by last_visit_at) ---
+    const visitorCounts: Record<string, number> = {}       // overall
+    const monthVisitorCounts: Record<string, number> = {}  // last 30 days
+    const dailyVisitorCounts: Record<string, number> = {}  // today
+
     visitorsData?.forEach(v => {
-      visitorCounts[v.profile_id] = (visitorCounts[v.profile_id] || 0) + 1
-      viewCounts[v.profile_id] = (viewCounts[v.profile_id] || 0) + (v.visit_count || 0)
+      const pId = v.profile_id
+      // Overall unique visitors
+      visitorCounts[pId] = (visitorCounts[pId] || 0) + 1
+
+      if (v.last_visit_at) {
+        const lastVisitDate = new Date(v.last_visit_at)
+        // Monthly unique visitors (last 30 days)
+        if (lastVisitDate >= thirtyDaysAgo) {
+          monthVisitorCounts[pId] = (monthVisitorCounts[pId] || 0) + 1
+        }
+        // Daily unique visitors (today UTC)
+        if (lastVisitDate.toISOString().split('T')[0] === todayUtcStr) {
+          dailyVisitorCounts[pId] = (dailyVisitorCounts[pId] || 0) + 1
+        }
+      }
+    })
+
+    // --- Views (ALL from daily_visits — single source of truth) ---
+    // Overall = ALL rows (no date filter), so daily <= monthly <= overall always holds
+    const viewCounts: Record<string, number> = {}       // overall (all time)
+    const monthViewCounts: Record<string, number> = {}  // last 30 days
+    const dailyViewCounts: Record<string, number> = {}  // today
+
+    dailyVisitsData?.forEach(d => {
+      const pId = d.profile_id
+      const date = d.visit_date
+
+      // Overall: every row, no filter
+      viewCounts[pId] = (viewCounts[pId] || 0) + (d.total_views || 0)
+
+      // Monthly views (last 30 days)
+      if (date >= thirtyDaysAgoStr) {
+        monthViewCounts[pId] = (monthViewCounts[pId] || 0) + (d.total_views || 0)
+      }
+
+      // Daily views (today)
+      if (date === todayUtcStr) {
+        dailyViewCounts[pId] = (dailyViewCounts[pId] || 0) + (d.total_views || 0)
+      }
     })
 
     const profilesWithVisits = (profilesData || []).map(profile => ({
       ...profile,
       visit_count: visitorCounts[profile.id] || 0,
-      total_views: viewCounts[profile.id] || 0
+      total_views: viewCounts[profile.id] || 0,
+      month_visit_count: monthVisitorCounts[profile.id] || 0,
+      month_total_views: monthViewCounts[profile.id] || 0,
+      daily_visit_count: dailyVisitorCounts[profile.id] || 0,
+      daily_total_views: dailyViewCounts[profile.id] || 0
     }))
 
     setProfiles(profilesWithVisits)
@@ -333,18 +404,26 @@ export default function SysDashboardPage() {
     // Calculate totals
     const totalUsers = new Set(profilesWithVisits.map(p => p.user_id)).size
     const totalProfiles = profilesWithVisits.length
-    const totalLinks = profilesWithVisits.reduce((acc, p) => 
+    const totalLinks = profilesWithVisits.reduce((acc, p) =>
       acc + Object.values(p.links || {}).filter((l): l is string => typeof l === 'string' && l.trim() !== '').length, 0
     )
     const totalVisits = Object.values(visitorCounts).reduce((a, b) => a + b, 0)
     const totalViews = Object.values(viewCounts).reduce((a, b) => a + b, 0)
+    const monthVisits = Object.values(monthVisitorCounts).reduce((a, b) => a + b, 0)
+    const monthViews = Object.values(monthViewCounts).reduce((a, b) => a + b, 0)
+    const dailyVisits = Object.values(dailyVisitorCounts).reduce((a, b) => a + b, 0)
+    const dailyViews = Object.values(dailyViewCounts).reduce((a, b) => a + b, 0)
 
     setStats({
       totalUsers,
       totalProfiles,
       totalLinks,
       totalVisits,
-      totalViews
+      totalViews,
+      monthVisits,
+      monthViews,
+      dailyVisits,
+      dailyViews
     })
     setLoading(false)
   }
@@ -533,6 +612,25 @@ export default function SysDashboardPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Timeframe Switcher */}
+        <div className="flex justify-start mb-4">
+          <div className="inline-flex rounded-xl p-1 bg-muted/80 backdrop-blur-sm border border-border/40">
+            {(['overall', 'month', 'daily'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTimeframe(t)}
+                className={`px-4 py-2 text-xs font-medium rounded-lg transition-all capitalize ${
+                  timeframe === t
+                    ? 'bg-background text-foreground shadow-sm font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t === 'month' ? 'Last 30 Days' : t}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <Card>
@@ -568,7 +666,9 @@ export default function SysDashboardPage() {
                 <Users className="w-4 h-4 text-green-600" />
                 <span className="text-sm text-muted-foreground">Unique Visits</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{stats.totalVisits.toLocaleString()}</p>
+              <p className="text-2xl font-bold mt-1">
+                {timeframe === 'daily' ? stats.dailyVisits.toLocaleString() : timeframe === 'month' ? stats.monthVisits.toLocaleString() : stats.totalVisits.toLocaleString()}
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -577,7 +677,9 @@ export default function SysDashboardPage() {
                 <Eye className="w-4 h-4 text-blue-600" />
                 <span className="text-sm text-muted-foreground">Total Views</span>
               </div>
-              <p className="text-2xl font-bold mt-1">{stats.totalViews.toLocaleString()}</p>
+              <p className="text-2xl font-bold mt-1">
+                {timeframe === 'daily' ? stats.dailyViews.toLocaleString() : timeframe === 'month' ? stats.monthViews.toLocaleString() : stats.totalViews.toLocaleString()}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -681,10 +783,14 @@ export default function SysDashboardPage() {
                               <span className="text-sm">{Object.values(profile.links || {}).filter((l): l is string => typeof l === 'string' && l.trim() !== '').length}</span>
                             </td>
                             <td className="py-3 px-4 text-center">
-                              <span className="text-sm text-green-600">{profile.visit_count?.toLocaleString() || 0}</span>
+                              <span className="text-sm text-green-600">
+                                {timeframe === 'daily' ? (profile.daily_visit_count?.toLocaleString() || 0) : timeframe === 'month' ? (profile.month_visit_count?.toLocaleString() || 0) : (profile.visit_count?.toLocaleString() || 0)}
+                              </span>
                             </td>
                             <td className="py-3 px-4 text-center">
-                              <span className="text-sm text-blue-600">{profile.total_views?.toLocaleString() || 0}</span>
+                              <span className="text-sm text-blue-600">
+                                {timeframe === 'daily' ? (profile.daily_total_views?.toLocaleString() || 0) : timeframe === 'month' ? (profile.month_total_views?.toLocaleString() || 0) : (profile.total_views?.toLocaleString() || 0)}
+                              </span>
                             </td>
                             <td className="py-3 px-4 text-right">
                               <div className="flex items-center justify-end gap-1">
@@ -928,11 +1034,11 @@ export default function SysDashboardPage() {
                                             </span>
                                             <span className="flex items-center gap-1 text-green-600">
                                               <Users className="w-3 h-3" />
-                                              {profile.visit_count?.toLocaleString() || 0}
+                                              {timeframe === 'daily' ? (profile.daily_visit_count?.toLocaleString() || 0) : timeframe === 'month' ? (profile.month_visit_count?.toLocaleString() || 0) : (profile.visit_count?.toLocaleString() || 0)}
                                             </span>
                                             <span className="flex items-center gap-1 text-blue-600">
                                               <Eye className="w-3 h-3" />
-                                              {profile.total_views?.toLocaleString() || 0}
+                                              {timeframe === 'daily' ? (profile.daily_total_views?.toLocaleString() || 0) : timeframe === 'month' ? (profile.month_total_views?.toLocaleString() || 0) : (profile.total_views?.toLocaleString() || 0)}
                                             </span>
                                           </div>
                                           <div className="flex gap-2 pt-1">
@@ -995,7 +1101,11 @@ export default function SysDashboardPage() {
                     </thead>
                     <tbody>
                       {[...profiles]
-                        .sort((a, b) => (b.total_views || 0) - (a.total_views || 0))
+                        .sort((a, b) => {
+                          const bVal = timeframe === 'daily' ? (b.daily_total_views || 0) : timeframe === 'month' ? (b.month_total_views || 0) : (b.total_views || 0)
+                          const aVal = timeframe === 'daily' ? (a.daily_total_views || 0) : timeframe === 'month' ? (a.month_total_views || 0) : (a.total_views || 0)
+                          return bVal - aVal
+                        })
                         .slice(0, 20)
                         .map((profile, index) => (
                         <tr key={profile.id} className="border-t hover:bg-muted/30 transition-colors">
@@ -1022,10 +1132,14 @@ export default function SysDashboardPage() {
                             </div>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <span className="text-sm text-green-600 font-medium">{profile.visit_count?.toLocaleString() || 0}</span>
+                            <span className="text-sm text-green-600 font-medium">
+                              {timeframe === 'daily' ? (profile.daily_visit_count?.toLocaleString() || 0) : timeframe === 'month' ? (profile.month_visit_count?.toLocaleString() || 0) : (profile.visit_count?.toLocaleString() || 0)}
+                            </span>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <span className="text-sm text-blue-600 font-medium">{profile.total_views?.toLocaleString() || 0}</span>
+                            <span className="text-sm text-blue-600 font-medium">
+                              {timeframe === 'daily' ? (profile.daily_total_views?.toLocaleString() || 0) : timeframe === 'month' ? (profile.month_total_views?.toLocaleString() || 0) : (profile.total_views?.toLocaleString() || 0)}
+                            </span>
                           </td>
                           <td className="py-3 px-4 text-sm text-muted-foreground">
                             {new Date(profile.created_at).toLocaleDateString()}

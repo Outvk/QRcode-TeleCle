@@ -24,6 +24,12 @@ interface Profile {
   bio: string | null
   links: Record<string, string> | null
   created_at: string
+  visit_count?: number
+  total_views?: number
+  month_visit_count?: number
+  month_total_views?: number
+  daily_visit_count?: number
+  daily_total_views?: number
 }
 
 function getActiveLinksCount(links: Record<string, string> | null): number {
@@ -49,6 +55,7 @@ export default function ProfilesPage() {
   })
   const [saving, setSaving] = useState(false)
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
+  const [timeframe, setTimeframe] = useState<'overall' | 'month' | 'daily'>('overall')
 
   useEffect(() => {
     loadProfiles()
@@ -79,39 +86,97 @@ export default function ProfilesPage() {
       return
     }
 
-    // Fetch profiles with visit counts
+    // Fetch profiles
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
-    if (profilesData) {
-      // Fetch visitor data for all profiles
+    if (profilesData && profilesData.length > 0) {
+      const profileIds = profilesData.map(p => p.id)
+
+      // Fetch visitor data for all profiles (all-time)
       const { data: visitorsData } = await supabase
         .from('unique_visitors')
-        .select('profile_id, visitor_fingerprint, visit_count')
+        .select('profile_id, visitor_fingerprint, visit_count, last_visit_at')
 
-      // Calculate unique visitors and total views per profile
-      const visitorCounts: Record<string, number> = {}
-      const viewCounts: Record<string, number> = {}
-      
+      // Fetch daily visits for all profiles
+      const { data: dailyVisitsData } = await supabase
+        .from('daily_visits')
+        .select('profile_id, visit_date, unique_visitors, total_views')
+        .in('profile_id', profileIds)
+
+      // --- Time boundaries (UTC to match DB tracking) ---
+      const now = new Date()
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      const todayUtcStr = now.toISOString().split('T')[0]
+      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0]
+
+      // --- Unique Visitors (from unique_visitors table, filtered by last_visit_at) ---
+      const visitorCounts: Record<string, number> = {}        // overall
+      const monthVisitorCounts: Record<string, number> = {}   // last 30 days
+      const dailyVisitorCounts: Record<string, number> = {}   // today
+
       visitorsData?.forEach(v => {
-        // Count unique visitors
-        visitorCounts[v.profile_id] = (visitorCounts[v.profile_id] || 0) + 1
-        // Sum total views
-        viewCounts[v.profile_id] = (viewCounts[v.profile_id] || 0) + (v.visit_count || 0)
+        const pId = v.profile_id
+        // Overall unique visitors
+        visitorCounts[pId] = (visitorCounts[pId] || 0) + 1
+
+        if (v.last_visit_at) {
+          const lastVisitDate = new Date(v.last_visit_at)
+          // Monthly unique visitors (last 30 days)
+          if (lastVisitDate >= thirtyDaysAgo) {
+            monthVisitorCounts[pId] = (monthVisitorCounts[pId] || 0) + 1
+          }
+          // Daily unique visitors (today UTC)
+          if (lastVisitDate.toISOString().split('T')[0] === todayUtcStr) {
+            dailyVisitorCounts[pId] = (dailyVisitorCounts[pId] || 0) + 1
+          }
+        }
       })
 
-      // Merge counts into profiles
+      // --- Views (ALL from daily_visits — single source of truth) ---
+      // Overall = ALL rows (no date filter), so daily <= monthly <= overall always
+      const viewCounts: Record<string, number> = {}       // overall (all time)
+      const monthViewCounts: Record<string, number> = {}  // last 30 days
+      const dailyViewCounts: Record<string, number> = {}  // today
+
+      dailyVisitsData?.forEach(d => {
+        const pId = d.profile_id
+        const date = d.visit_date
+
+        // Overall views: sum every row unconditionally
+        viewCounts[pId] = (viewCounts[pId] || 0) + (d.total_views || 0)
+
+        // Monthly views (last 30 days)
+        if (date >= thirtyDaysAgoStr) {
+          monthViewCounts[pId] = (monthViewCounts[pId] || 0) + (d.total_views || 0)
+        }
+
+        // Daily views (today)
+        if (date === todayUtcStr) {
+          dailyViewCounts[pId] = (dailyViewCounts[pId] || 0) + (d.total_views || 0)
+        }
+      })
+
+      // Merge all counts into profiles
       const profilesWithVisits = profilesData.map(profile => ({
         ...profile,
         visit_count: visitorCounts[profile.id] || 0,
-        total_views: viewCounts[profile.id] || 0
+        total_views: viewCounts[profile.id] || 0,
+        month_visit_count: monthVisitorCounts[profile.id] || 0,
+        month_total_views: monthViewCounts[profile.id] || 0,
+        daily_visit_count: dailyVisitorCounts[profile.id] || 0,
+        daily_total_views: dailyViewCounts[profile.id] || 0
       }))
 
       setProfiles(profilesWithVisits)
       setFilteredProfiles(profilesWithVisits)
+    } else {
+      setProfiles([])
+      setFilteredProfiles([])
     }
     setLoading(false)
   }
@@ -232,6 +297,25 @@ export default function ProfilesPage() {
           </p>
         </div>
 
+        {/* Timeframe Switcher */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex rounded-xl p-1 bg-muted/80 backdrop-blur-sm border border-border/40">
+            {(['overall', 'month', 'daily'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTimeframe(t)}
+                className={`px-4 py-2 text-xs font-medium rounded-lg transition-all capitalize ${
+                  timeframe === t
+                    ? "bg-background text-foreground shadow-sm font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t === 'month' ? 'Last 30 Days' : t}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Stats */}
         <div className="flex justify-center gap-8 mb-8">
           <div className="text-center">
@@ -240,13 +324,21 @@ export default function ProfilesPage() {
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-green-600">
-              {profiles.reduce((acc: number, p: any) => acc + (p.visit_count || 0), 0).toLocaleString()}
+              {profiles.reduce((acc: number, p: any) => {
+                if (timeframe === 'daily') return acc + (p.daily_visit_count || 0)
+                if (timeframe === 'month') return acc + (p.month_visit_count || 0)
+                return acc + (p.visit_count || 0)
+              }, 0).toLocaleString()}
             </div>
             <div className="text-sm text-muted-foreground">Unique Visitors</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-blue-600">
-              {profiles.reduce((acc: number, p: any) => acc + (p.total_views || 0), 0).toLocaleString()}
+              {profiles.reduce((acc: number, p: any) => {
+                if (timeframe === 'daily') return acc + (p.daily_total_views || 0)
+                if (timeframe === 'month') return acc + (p.month_total_views || 0)
+                return acc + (p.total_views || 0)
+              }, 0).toLocaleString()}
             </div>
             <div className="text-sm text-muted-foreground">Total Views</div>
           </div>
@@ -395,12 +487,22 @@ export default function ProfilesPage() {
                         </td>
                         <td className="py-4 px-6 text-center">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                            {(profile as any).visit_count?.toLocaleString() || 0}
+                            {timeframe === 'daily' 
+                              ? (profile.daily_visit_count?.toLocaleString() || 0) 
+                              : timeframe === 'month' 
+                                ? (profile.month_visit_count?.toLocaleString() || 0) 
+                                : (profile.visit_count?.toLocaleString() || 0)
+                            }
                           </span>
                         </td>
                         <td className="py-4 px-6 text-center">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                            {(profile as any).total_views?.toLocaleString() || 0}
+                            {timeframe === 'daily' 
+                              ? (profile.daily_total_views?.toLocaleString() || 0) 
+                              : timeframe === 'month' 
+                                ? (profile.month_total_views?.toLocaleString() || 0) 
+                                : (profile.total_views?.toLocaleString() || 0)
+                            }
                           </span>
                         </td>
                         <td className="py-4 px-6 text-right">
