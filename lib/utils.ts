@@ -102,5 +102,7 @@ export const SOCIAL_PLATFORMS = [
   { key: 'phone',     label: 'Phone',     placeholder: 'tel:+1234567890',                 color: '#10B981' },
   { key: 'phone2',    label: 'Phone 2',   placeholder: 'tel:+1234567890',                 color: '#10B981' },
   { key: 'phone3',    label: 'Phone 3',   placeholder: 'tel:+1234567890',                 color: '#10B981' },
+  { key: 'fixe',      label: 'Fixe 1',    placeholder: 'tel:+1234567890',                 color: '#0D9488' },
+  { key: 'fixe2',     label: 'Fixe 2',    placeholder: 'tel:+1234567890',                 color: '#0D9488' },
   { key: 'fax',       label: 'Fax',       placeholder: 'tel:+1234567890',                 color: '#64748B' },
 ]
